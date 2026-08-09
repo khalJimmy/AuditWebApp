@@ -1,0 +1,351 @@
+{
+  "users": [
+    {
+      "id": "u1",
+      "name": "Audit Lead (Admin)",
+      "username": "admin",
+      "pw": "68cf3826",
+      "role": "admin",
+      "zone": "",
+      "depts": [],
+      "active": true
+    },
+    {
+      "id": "u2",
+      "name": "Jake (Chennai Auditor)",
+      "username": "auditor1",
+      "pw": "68cf3826",
+      "role": "auditor",
+      "zone": "Chennai",
+      "depts": ["AA", "AE", "AD", "E", "F"],
+      "active": true
+    },
+    {
+      "id": "u3",
+      "name": "Anand (Coimbatore Auditor)",
+      "username": "auditor2",
+      "pw": "68cf3826",
+      "role": "auditor",
+      "zone": "Coimbatore",
+      "depts": ["AA", "R1", "F1", "E2"],
+      "active": true
+    },
+    {
+      "id": "u4",
+      "name": "Deepak (Bangalore Auditor)",
+      "username": "auditor3",
+      "pw": "68cf3826",
+      "role": "auditor",
+      "zone": "Bangalore",
+      "depts": ["AA", "AC", "AE", "F2"],
+      "active": true
+    },
+    {
+      "id": "u5",
+      "name": "Jayalalitha (MIS SPOC - Chennai)",
+      "username": "spoc.mis",
+      "pw": "5f53bc64",
+      "role": "spoc",
+      "zone": "Chennai",
+      "depts": ["AA"],
+      "active": true
+    },
+    {
+      "id": "u6",
+      "name": "Seshadri (Retention SPOC - Chennai)",
+      "username": "spoc.ae",
+      "pw": "5f53bc64",
+      "role": "spoc",
+      "zone": "Chennai",
+      "depts": ["AE"],
+      "active": true
+    },
+    {
+      "id": "u7",
+      "name": "Varunya (Cust Delight SPOC)",
+      "username": "spoc.e",
+      "pw": "5f53bc64",
+      "role": "spoc",
+      "zone": "Chennai",
+      "depts": ["E", "E1", "E2", "E3", "E4", "E5"],
+      "active": true
+    },
+    {
+      "id": "u8",
+      "name": "Kavitha (MIS SPOC - Bangalore)",
+      "username": "spoc.mis.blr",
+      "pw": "5f53bc64",
+      "role": "spoc",
+      "zone": "Bangalore",
+      "depts": ["AA"],
+      "active": true
+    },
+    {
+      "id": "u9",
+      "name": "Murugan (MIS SPOC - Coimbatore)",
+      "username": "spoc.mis.cbe",
+      "pw": "5f53bc64",
+      "role": "spoc",
+      "zone": "Coimbatore",
+      "depts": ["AA"],
+      "active": true
+    }
+  ],
+  "departments": [
+    {
+      "ref": "A",
+      "dept": "ADMIN",
+      "fn": "ADMIN",
+      "sn": "Ramesh",
+      "sm": "ramesh.admin@casagrand.co.in",
+      "hm": "suresh.head@casagrand.co.in",
+      "hodName": "Suresh Kumar",
+      "zoneContacts": {
+        "Chennai": { "sn": "Ramesh (CHN)", "sm": "ramesh.admin.chn@casagrand.co.in", "hm": "suresh.head@casagrand.co.in", "hodName": "Suresh Kumar" },
+        "Coimbatore": { "sn": "Prabhu (CBE)", "sm": "prabhu.cbe@casagrand.co.in", "hm": "suresh.head@casagrand.co.in", "hodName": "Suresh Kumar" },
+        "Bangalore": { "sn": "Siddharth (BLR)", "sm": "siddharth.blr@casagrand.co.in", "hm": "suresh.head@casagrand.co.in", "hodName": "Suresh Kumar" }
+      }
+    },
+    {
+      "ref": "AA",
+      "dept": "MIS",
+      "fn": "MIS",
+      "sn": "Jayalalitha",
+      "sm": "jayalalitha@casagrand.co.in",
+      "hm": "yuvaraj@casagrand.co.in",
+      "hodName": "Yuvaraj",
+      "zoneContacts": {
+        "Chennai": { "sn": "Jayalalitha", "sm": "jayalalitha@casagrand.co.in", "hm": "yuvaraj@casagrand.co.in", "hodName": "Yuvaraj" },
+        "Coimbatore": { "sn": "Murugan (CBE)", "sm": "murugan.cbe@casagrand.co.in", "hm": "yuvaraj@casagrand.co.in", "hodName": "Yuvaraj" },
+        "Bangalore": { "sn": "Kavitha (BLR)", "sm": "kavitha.blr@casagrand.co.in", "hm": "yuvaraj@casagrand.co.in", "hodName": "Yuvaraj" }
+      }
+    },
+    { "ref": "AB", "dept": "OPERATIONS", "fn": "OPERATIONS POST LAUNCH", "sn": "Balaji", "sm": "balaji.ops@casagrand.co.in", "hm": "sivakumar@casagrand.co.in", "hodName": "Sivakumar" },
+    { "ref": "AB1", "dept": "OPERATIONS", "fn": "OPERATIONS PRE LAUNCH", "sn": "Sathish", "sm": "sathish.ops@casagrand.co.in", "hm": "sivakumar@casagrand.co.in", "hodName": "Sivakumar" },
+    { "ref": "AB2", "dept": "OPERATIONS", "fn": "OPERATION PRELAUNCH - RERA", "sn": "Gokul", "sm": "gokul.rera@casagrand.co.in", "hm": "sivakumar@casagrand.co.in", "hodName": "Sivakumar" },
+    { "ref": "AB3", "dept": "OPERATIONS", "fn": "OPERATION PRELAUNCH - EB", "sn": "Mani", "sm": "mani.eb@casagrand.co.in", "hm": "sivakumar@casagrand.co.in", "hodName": "Sivakumar" },
+    { "ref": "AC", "dept": "P&L", "fn": "P&L", "sn": "Karthik", "sm": "karthik.pnl@casagrand.co.in", "hm": "venkat@casagrand.co.in", "hodName": "Venkat" },
+    {
+      "ref": "AD",
+      "dept": "PRODUCT DEVELOPMENT",
+      "fn": "PRODUCT DEVELOPMENT - CONCEPT & CLOSURE",
+      "sn": "Deepa",
+      "sm": "deepa.j@casagrand.co.in",
+      "hm": "gautam.agarwaal@casagrand.co.in",
+      "hodName": "Gautam Agarwaal",
+      "zoneContacts": {
+        "Chennai": { "sn": "Deepa (CHN)", "sm": "deepa.j@casagrand.co.in", "hm": "gautam.agarwaal@casagrand.co.in", "hodName": "Gautam Agarwaal" },
+        "Coimbatore": { "sn": "Naveen (CBE)", "sm": "naveen.pd.cbe@casagrand.co.in", "hm": "gautam.agarwaal@casagrand.co.in", "hodName": "Gautam Agarwaal" },
+        "Bangalore": { "sn": "Meera (BLR)", "sm": "meera.pd.blr@casagrand.co.in", "hm": "gautam.agarwaal@casagrand.co.in", "hodName": "Gautam Agarwaal" }
+      }
+    },
+    { "ref": "AD1", "dept": "PRODUCT DEVELOPMENT", "fn": "PRODUCT DEVELOPMENT - SUPERIOR HOMES", "sn": "Shanmugapriya", "sm": "shanmugapriya.r@casagrand.co.in", "hm": "shanmugapriya.r@casagrand.co.in", "hodName": "Shanmugapriya" },
+    { "ref": "AD2", "dept": "PRODUCT DEVELOPMENT", "fn": "PRODUCT DEVELOPMENT - PVF", "sn": "Rajesh", "sm": "rajesh.pvf@casagrand.co.in", "hm": "gautam.agarwaal@casagrand.co.in", "hodName": "Gautam Agarwaal" },
+    { "ref": "AD3", "dept": "PRODUCT DEVELOPMENT", "fn": "PRODUCT DEVELOPMENT - MODEL HOUSE", "sn": "Subhash", "sm": "subhash.model@casagrand.co.in", "hm": "gautam.agarwaal@casagrand.co.in", "hodName": "Gautam Agarwaal" },
+    { "ref": "AD4", "dept": "PRODUCT DEVELOPMENT", "fn": "PRODUCT DEVELOPMENT - OPERATIONS", "sn": "Dinesh", "sm": "dinesh.pd@casagrand.co.in", "hm": "gautam.agarwaal@casagrand.co.in", "hodName": "Gautam Agarwaal" },
+    { "ref": "AD5", "dept": "PRODUCT DEVELOPMENT", "fn": "PRODUCT DEVELOPMENT - FINISHING", "sn": "Premanand", "sm": "premanand@casagrand.co.in", "hm": "gautam.agarwaal@casagrand.co.in", "hodName": "Gautam Agarwaal" },
+    {
+      "ref": "AE",
+      "dept": "RETENTION",
+      "fn": "RETENTION",
+      "sn": "Seshadri",
+      "sm": "seshadri@casagrand.co.in",
+      "hm": "dinesh.r@casagrand.co.in",
+      "hodName": "Dinesh R",
+      "zoneContacts": {
+        "Chennai": { "sn": "Seshadri (CHN)", "sm": "seshadri@casagrand.co.in", "hm": "dinesh.r@casagrand.co.in", "hodName": "Dinesh R" },
+        "Coimbatore": { "sn": "Arun (CBE)", "sm": "arun.ret.cbe@casagrand.co.in", "hm": "dinesh.r@casagrand.co.in", "hodName": "Dinesh R" },
+        "Bangalore": { "sn": "Pooja (BLR)", "sm": "pooja.ret.blr@casagrand.co.in", "hm": "dinesh.r@casagrand.co.in", "hodName": "Dinesh R" }
+      }
+    },
+    { "ref": "AF", "dept": "SALES", "fn": "SALES", "sn": "Vijay", "sm": "vijay.sales@casagrand.co.in", "hm": "vimal@casagrand.co.in", "hodName": "Vimal" },
+    { "ref": "AG", "dept": "SAP", "fn": "SAP FICO", "sn": "Srikanth", "sm": "srikanth.sap@casagrand.co.in", "hm": "sundar@casagrand.co.in", "hodName": "Sundar" },
+    { "ref": "AG1", "dept": "SAP", "fn": "SAP MATERIAL MANAGEMENT", "sn": "Ganesh", "sm": "ganesh.mm@casagrand.co.in", "hm": "sundar@casagrand.co.in", "hodName": "Sundar" },
+    { "ref": "AG2", "dept": "SAP", "fn": "SAP PROJECT SYSTEM & BUDGET CONTROL", "sn": "Bala", "sm": "bala.ps@casagrand.co.in", "hm": "sundar@casagrand.co.in", "hodName": "Sundar" },
+    { "ref": "AG3", "dept": "SAP", "fn": "SAP SALES & DISTRIBUTION", "sn": "Nandita", "sm": "nandita.sd@casagrand.co.in", "hm": "sundar@casagrand.co.in", "hodName": "Sundar" },
+    {
+      "ref": "E",
+      "dept": "CUSTOMER DELIGHT",
+      "fn": "CUSTOMER DELIGHT",
+      "sn": "Varunya",
+      "sm": "varunya@casagrand.co.in",
+      "hm": "anszary@casagrand.co.in",
+      "hodName": "Anszary",
+      "zoneContacts": {
+        "Chennai": { "sn": "Varunya (CHN)", "sm": "varunya@casagrand.co.in", "hm": "anszary@casagrand.co.in", "hodName": "Anszary" },
+        "Coimbatore": { "sn": "Shalini (CBE)", "sm": "shalini.cd.cbe@casagrand.co.in", "hm": "anszary@casagrand.co.in", "hodName": "Anszary" },
+        "Bangalore": { "sn": "Gautami (BLR)", "sm": "gautami.cd.blr@casagrand.co.in", "hm": "anszary@casagrand.co.in", "hodName": "Anszary" }
+      }
+    },
+    { "ref": "E1", "dept": "CUSTOMER DELIGHT", "fn": "CUSTOMER DELIGHT - I CARE", "sn": "Janani", "sm": "janani.icare@casagrand.co.in", "hm": "anszary@casagrand.co.in", "hodName": "Anszary" },
+    { "ref": "E2", "dept": "CUSTOMER DELIGHT", "fn": "CUSTOMER DELIGHT - I CARE - REFUND", "sn": "Fathima", "sm": "syedali@casagrand.co.in", "hm": "anszary@casagrand.co.in", "hodName": "Anszary" },
+    { "ref": "F", "dept": "ENGINEERING COMMERCIAL", "fn": "ENGINEERING COMMERCIAL - DESIGN", "sn": "Vidhya", "sm": "vidhya.v@casagrand.co.in", "hm": "velumani@casagrand.co.in", "hodName": "Velumani" },
+    { "ref": "F1", "dept": "ENGINEERING COMMERCIAL", "fn": "ENGINEERING COMMERCIAL - CONTRACTS", "sn": "Vemulu", "sm": "vemulu@casagrand.co.in", "hm": "jayaprabu@casagrand.co.in", "hodName": "Jayaprabu" },
+    { "ref": "F2", "dept": "ENGINEERING COMMERCIAL", "fn": "ENGINEERING COMMERCIAL - BILLING", "sn": "Manimaran", "sm": "manimaran@casagrand.co.in", "hm": "velumani@casagrand.co.in", "hodName": "Velumani" },
+    { "ref": "R1", "dept": "HUMAN RESOURCES", "fn": "HR - RECRUITMENT", "sn": "Vignesh", "sm": "vignesh.kumar@casagrand.co.in", "hm": "naveenkumar.v@casagrand.co.in", "hodName": "Naveen Kumar V" },
+    { "ref": "R3", "dept": "HUMAN RESOURCES", "fn": "HR - PAYROLL", "sn": "Akshatha", "sm": "akshathakumar@casagrand.co.in", "hm": "naveenkumar.v@casagrand.co.in", "hodName": "Naveen Kumar V" }
+  ],
+  "plans": [
+    {
+      "planId": "PLN-CHN-001",
+      "ref": "AA",
+      "dept": "MIS",
+      "fn": "MIS",
+      "month": "August",
+      "planDate": "2026-08-08",
+      "auditor": "Jake (Chennai Auditor)",
+      "zone": "Chennai",
+      "spocMail": "jayalalitha@casagrand.co.in",
+      "hodMail": "yuvaraj@casagrand.co.in",
+      "remarks": "Monthly MIS Process Audit - Chennai",
+      "type": "Plan",
+      "status": "Scheduled",
+      "createdAt": "2026-08-08T00:00:00.000Z"
+    },
+    {
+      "planId": "PLN-CHN-002",
+      "ref": "AE",
+      "dept": "RETENTION",
+      "fn": "RETENTION",
+      "month": "August",
+      "planDate": "2026-08-15",
+      "auditor": "Jake (Chennai Auditor)",
+      "zone": "Chennai",
+      "spocMail": "seshadri@casagrand.co.in",
+      "hodMail": "dinesh.r@casagrand.co.in",
+      "remarks": "Quarterly Customer Retention Audit",
+      "type": "Plan",
+      "status": "YET TO AUDIT",
+      "createdAt": "2026-08-08T00:00:00.000Z"
+    },
+    {
+      "planId": "PLN-CBE-001",
+      "ref": "R1",
+      "dept": "HUMAN RESOURCES",
+      "fn": "HR - RECRUITMENT",
+      "month": "August",
+      "planDate": "2026-08-08",
+      "auditor": "Anand (Coimbatore Auditor)",
+      "zone": "Coimbatore",
+      "spocMail": "vignesh.kumar@casagrand.co.in",
+      "hodMail": "naveenkumar.v@casagrand.co.in",
+      "remarks": "Recruitment SLAs & Onboarding Compliance",
+      "type": "Plan",
+      "status": "Scheduled",
+      "createdAt": "2026-08-08T00:00:00.000Z"
+    },
+    {
+      "planId": "PLN-BLR-001",
+      "ref": "AC",
+      "dept": "P&L",
+      "fn": "P&L",
+      "month": "August",
+      "planDate": "2026-08-15",
+      "auditor": "Deepak (Bangalore Auditor)",
+      "zone": "Bangalore",
+      "spocMail": "karthik.pnl@casagrand.co.in",
+      "hodMail": "venkat@casagrand.co.in",
+      "remarks": "P&L Variance Review - Bangalore Zone",
+      "type": "Plan",
+      "status": "Scheduled",
+      "createdAt": "2026-08-08T00:00:00.000Z"
+    }
+  ],
+  "audits": [
+    {
+      "auditId": "AUD-2026-08-001",
+      "planId": "PLN-CHN-001",
+      "auditDate": "2026-08-08",
+      "reportDate": "2026-08-08",
+      "ref": "AA",
+      "dept": "MIS",
+      "fn": "MIS",
+      "zone": "Chennai",
+      "auditor": "Jake (Chennai Auditor)",
+      "auditType": "Process Audit",
+      "auditee": "Jayalalitha",
+      "hod": "Yuvaraj",
+      "scope": "Monthly Reporting & Escalation Matrix",
+      "params": "10",
+      "sampling": "15 records",
+      "findings": [
+        {
+          "id": "f101",
+          "type": "t1",
+          "process": "Weekly MIS Dispatch",
+          "description": "3 weekly reports were dispatched with 48 hours delay without HOD approval.",
+          "evidence": "MIS Log Aug Week 1",
+          "imm": "Dispatched updated report immediately.",
+          "rc": "System script failed due to schema mismatch.",
+          "capa": "Automated schema validation before dispatch.",
+          "dueDate": "2026-08-08",
+          "responsible": "Jayalalitha",
+          "status": "Open"
+        },
+        {
+          "id": "f102",
+          "type": "t2",
+          "process": "Data Retention Policy",
+          "description": "Backup records not tagged with retention expiry date.",
+          "evidence": "Server Drive B",
+          "imm": "Tagged current drive.",
+          "rc": "Lack of standardized template.",
+          "capa": "Introduced mandatory template for backups.",
+          "dueDate": "2026-08-08",
+          "responsible": "Jayalalitha",
+          "status": "Open"
+        },
+        {
+          "id": "f103",
+          "type": "t4",
+          "process": "Continuous Improvement",
+          "description": "Implemented automated dashboard for real-time tracking.",
+          "evidence": "Live Portal",
+          "status": "Closed"
+        }
+      ],
+      "compliancePct": "85%",
+      "processScore": 850,
+      "ncCount": 1,
+      "obsCount": 1,
+      "riskCount": 0,
+      "ciCount": 1,
+      "closureDate": "2026-08-08",
+      "closureSpoc": "Jayalalitha",
+      "closureSummary": "Agreed on corrective actions and 72h TAT deadline.",
+      "preparedBy": "Jake (Chennai Auditor)",
+      "approvedBy": "Audit Lead",
+      "status": "Submitted",
+      "submittedAt": "2026-08-08T00:00:00.000Z",
+      "submittedBy": "auditor1",
+      "spocMail": "jayalalitha@casagrand.co.in",
+      "hodMail": "yuvaraj@casagrand.co.in"
+    }
+  ],
+  "tasks": [],
+  "settings": {
+    "tatHours": 72,
+    "defaultYear": "2026-27",
+    "systemEmail": "sfjimelliot@gmail.com",
+    "dispatchTemplate": "Dear SPOC,\n\nPlease review and submit Corrective Action Plans (CAPA) for open audit findings within 72 hours SLA.",
+    "reminderTemplate": "Dear SPOC,\n\nThis is an urgent reminder that your audit findings resolution SLA deadline is approaching (<24h).",
+    "auditors": {
+      "Chennai": ["Jake", "Karthik Raja", "Priya S"],
+      "Coimbatore": ["Anand", "Vijay L"],
+      "Bangalore": ["Deepak", "Meena K"]
+    },
+    "params": [
+      { "id": "P1", "title": "SOP & Process Compliance", "max": 100 },
+      { "id": "P2", "title": "Documentation & Record Keeping", "max": 100 },
+      { "id": "P3", "title": "TAT & SLA Adherence", "max": 100 },
+      { "id": "P4", "title": "Data Accuracy & Integrity", "max": 100 },
+      { "id": "P5", "title": "Approval Hierarchy & Controls", "max": 100 },
+      { "id": "P6", "title": "Inter-dept Coordination", "max": 100 },
+      { "id": "P7", "title": "Resource Utilization & Efficiency", "max": 100 },
+      { "id": "P8", "title": "Risk Controls & Compliance", "max": 100 },
+      { "id": "P9", "title": "Customer / Vendor Impact", "max": 100 },
+      { "id": "P10", "title": "Previous Audit Action Implementation", "max": 100 }
+    ],
+    "senderEmail": "audit.pnc@casagrand.co.in"
+  }
+}

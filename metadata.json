@@ -1,0 +1,6 @@
+{
+  "name": "Casagrand Process Audit",
+  "description": "Casagrand P&C v4 Process Audit Workflow application for scheduling audits, submitting reports, dispatching findings, TAT tracking, department management, and user authorization.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
