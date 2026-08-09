@@ -132,6 +132,7 @@ export interface PlanItem {
   notes?: string;
   remarks?: string;
   type?: 'Plan' | 'Adhoc';
+  zone?: ZoneName | '';
   status?: 'Scheduled' | 'COMPLETED' | 'NOT COMPLETED' | 'YET TO AUDIT';
   createdAt?: string;
 }

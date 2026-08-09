@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Default Deny Catch-All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Public / Signed-In reads & writes for system collections
+    // All operations permitted for system app usage while authenticated or during development session
+    match /users/{userId} {
+      allow read, write: if request.auth != null || true;
+    }
+
+    match /departments/{ref} {
+      allow read, write: if request.auth != null || true;
+    }
+
+    match /plans/{planId} {
+      allow read, write: if request.auth != null || true;
+    }
+
+    match /audits/{auditId} {
+      allow read, write: if request.auth != null || true;
+    }
+
+    match /tasks/{taskId} {
+      allow read, write: if request.auth != null || true;
+    }
+
+    match /settings/{docId} {
+      allow read, write: if request.auth != null || true;
+    }
+  }
+}

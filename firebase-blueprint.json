@@ -1,0 +1,123 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "System user account with role and zone context",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "username": { "type": "string", "maxLength": 50 },
+        "pw": { "type": "string", "maxLength": 128 },
+        "role": { "type": "string", "enum": ["admin", "auditor", "spoc", "hod"] },
+        "zone": { "type": "string", "maxLength": 50 },
+        "depts": { "type": "array" },
+        "active": { "type": "boolean" }
+      },
+      "required": ["id", "name", "username", "role", "active"]
+    },
+    "Department": {
+      "title": "Department",
+      "description": "Department unit master record",
+      "type": "object",
+      "properties": {
+        "ref": { "type": "string", "maxLength": 30 },
+        "dept": { "type": "string", "maxLength": 100 },
+        "fn": { "type": "string", "maxLength": 150 },
+        "sn": { "type": "string", "maxLength": 100 },
+        "sm": { "type": "string", "maxLength": 150 },
+        "hm": { "type": "string", "maxLength": 150 },
+        "hodName": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["ref", "dept", "fn"]
+    },
+    "AuditPlan": {
+      "title": "AuditPlan",
+      "description": "Monthly process audit schedule plan",
+      "type": "object",
+      "properties": {
+        "planId": { "type": "string", "maxLength": 64 },
+        "ref": { "type": "string", "maxLength": 30 },
+        "dept": { "type": "string", "maxLength": 100 },
+        "fn": { "type": "string", "maxLength": 150 },
+        "month": { "type": "string", "maxLength": 20 },
+        "planDate": { "type": "string", "maxLength": 20 },
+        "auditor": { "type": "string", "maxLength": 100 },
+        "zone": { "type": "string", "maxLength": 50 },
+        "spocMail": { "type": "string", "maxLength": 150 },
+        "hodMail": { "type": "string", "maxLength": 150 },
+        "status": { "type": "string", "maxLength": 30 },
+        "type": { "type": "string", "maxLength": 30 }
+      },
+      "required": ["planId", "ref", "month", "planDate"]
+    },
+    "AuditReport": {
+      "title": "AuditReport",
+      "description": "Executed process audit report",
+      "type": "object",
+      "properties": {
+        "auditId": { "type": "string", "maxLength": 64 },
+        "planId": { "type": "string", "maxLength": 64 },
+        "auditDate": { "type": "string", "maxLength": 20 },
+        "ref": { "type": "string", "maxLength": 30 },
+        "dept": { "type": "string", "maxLength": 100 },
+        "fn": { "type": "string", "maxLength": 150 },
+        "zone": { "type": "string", "maxLength": 50 },
+        "auditor": { "type": "string", "maxLength": 100 },
+        "processScore": { "type": "number" },
+        "status": { "type": "string", "maxLength": 30 }
+      },
+      "required": ["auditId", "ref", "dept", "status"]
+    },
+    "DispatchTask": {
+      "title": "DispatchTask",
+      "description": "Dispatched action item task with 72h SLA TAT",
+      "type": "object",
+      "properties": {
+        "taskId": { "type": "string", "maxLength": 64 },
+        "auditId": { "type": "string", "maxLength": 64 },
+        "token": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "maxLength": 30 },
+        "dueAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["taskId", "auditId", "token", "status"]
+    },
+    "SystemSettings": {
+      "title": "SystemSettings",
+      "description": "Global operational settings",
+      "type": "object",
+      "properties": {
+        "tatHours": { "type": "number" },
+        "defaultYear": { "type": "string", "maxLength": 20 },
+        "systemEmail": { "type": "string", "maxLength": 150 }
+      },
+      "required": ["tatHours", "systemEmail"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User registry"
+    },
+    "/departments/{ref}": {
+      "schema": { "$ref": "#/entities/Department" },
+      "description": "Department master list"
+    },
+    "/plans/{planId}": {
+      "schema": { "$ref": "#/entities/AuditPlan" },
+      "description": "Audit schedule plans"
+    },
+    "/audits/{auditId}": {
+      "schema": { "$ref": "#/entities/AuditReport" },
+      "description": "Submitted audit reports"
+    },
+    "/tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/DispatchTask" },
+      "description": "Dispatched action items"
+    },
+    "/settings/config": {
+      "schema": { "$ref": "#/entities/SystemSettings" },
+      "description": "System operational configuration"
+    }
+  }
+}

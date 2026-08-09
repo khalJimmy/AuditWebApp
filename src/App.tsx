@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import './firebase';
 import { useAuth } from './hooks/useAuth';
 import { useAuditData } from './hooks/useAuditData';
 
