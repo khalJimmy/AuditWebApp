@@ -20,9 +20,18 @@ export function useAuditData(currentUser: User | null) {
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const addToast = (msg: string) => {
+  const addToast = useCallback((msg: string | null) => {
     setToastMessage(msg);
-  };
+  }, []);
+
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => {
+        setToastMessage(null);
+      }, 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
 
   const fetchAll = useCallback(async () => {
     if (!currentUser) return;

@@ -324,41 +324,7 @@ export function App() {
         />
       )}
 
-      <footer
-        style={{
-          borderTop: '1px solid var(--border)',
-          background: 'var(--surface)',
-          padding: '16px 28px',
-          marginTop: 'auto',
-          width: '100%',
-          boxSizing: 'border-box'
-        }}
-      >
-        <div
-          style={{
-            maxWidth: '1400px',
-            margin: '0 auto',
-            width: '100%',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '12px',
-            fontSize: '11px',
-            color: 'var(--muted)'
-          }}
-        >
-          <div>
-            © {new Date().getFullYear()} <strong>Casagrand Builder Private Limited</strong>. Quality &amp; Process Audit Operations.
-          </div>
-          <div style={{ display: 'flex', gap: '16px' }}>
-            <span>⚡ SLA: 72 Hours TAT</span>
-            <span>v3.4.0</span>
-          </div>
-        </div>
-      </footer>
-
-      <Toast message={auditData.toastMessage} />
+      <Toast message={auditData.toastMessage} onClose={() => auditData.addToast(null)} />
     </div>
   );
 }

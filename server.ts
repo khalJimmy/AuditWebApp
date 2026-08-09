@@ -206,7 +206,8 @@ async function startServer() {
   // USERS: Save / Update
   app.post('/api/users', (req: Request, res: Response, next: NextFunction) => {
     try {
-      const u: User = req.body;
+      const u: User & { password?: string } = req.body;
+      const userPw = u.pw || u.password;
       if (!u.name || !u.username) {
         res.status(400).json({ error: 'Name and Username are required.' });
         return;
@@ -218,17 +219,17 @@ async function startServer() {
         users[existingIdx] = {
           ...current,
           ...u,
-          pw: u.pw ? h6(u.pw) : current.pw
+          pw: userPw ? h6(userPw) : current.pw
         };
       } else {
-        if (!u.pw) {
+        if (!userPw) {
           res.status(400).json({ error: 'Password is required for new users.' });
           return;
         }
         const newUser: User = {
           ...u,
           id: u.id || `u${Date.now()}`,
-          pw: h6(u.pw)
+          pw: h6(userPw)
         };
         users.push(newUser);
       }
@@ -301,25 +302,52 @@ async function startServer() {
   // PLANS: Create or Update
   app.post('/api/plans', (req: Request, res: Response, next: NextFunction) => {
     try {
-      const plan: AuditPlan = req.body;
+      const plan: Partial<AuditPlan> = req.body;
+
+      if (plan.planId) {
+        const existingIdx = plans.findIndex(p => p.planId === plan.planId);
+        if (existingIdx >= 0) {
+          plans[existingIdx] = { ...plans[existingIdx], ...plan };
+          res.json({ success: true, plan: plans[existingIdx] });
+          return;
+        }
+      }
+
       if (!plan.ref || !plan.month || !plan.planDate) {
-        res.status(400).json({ error: 'Ref, Month, and Plan Date are required.' });
+        res.status(400).json({ error: 'Ref, Month, and Plan Date are required for new plans.' });
         return;
       }
 
-      if (!plan.planId) {
-        const pad = (n: number) => String(n).padStart(3, '0');
-        plan.planId = `PLN-${pad(nextPlanSeq++)}`;
-      }
+      const pad = (n: number) => String(n).padStart(3, '0');
+      const newPlan: AuditPlan = {
+        planId: plan.planId || `PLN-${pad(nextPlanSeq++)}`,
+        ref: plan.ref,
+        dept: plan.dept || '',
+        fn: plan.fn || '',
+        month: plan.month,
+        planDate: plan.planDate,
+        status: plan.status || 'Scheduled',
+        auditor: plan.auditor || '',
+        spocMail: plan.spocMail || '',
+        hodMail: plan.hodMail || '',
+        type: plan.type || 'Plan',
+        zone: plan.zone || 'Chennai',
+        remarks: plan.remarks || ''
+      };
 
-      const existingIdx = plans.findIndex(p => p.planId === plan.planId);
-      if (existingIdx >= 0) {
-        plans[existingIdx] = plan;
-      } else {
-        plans.push(plan);
-      }
+      plans.push(newPlan);
+      res.json({ success: true, plan: newPlan });
+    } catch (err) {
+      next(err);
+    }
+  });
 
-      res.json({ success: true, plan });
+  // PLANS: Delete
+  app.delete('/api/plans/:id', (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      plans = plans.filter(p => p.planId !== id);
+      res.json({ success: true, deletedPlanId: id });
     } catch (err) {
       next(err);
     }
@@ -470,7 +498,6 @@ async function startServer() {
   // DOCS: File Hierarchy Flow Tree & SOP Rules Policy
   app.get('/api/docs/hierarchy', (_req: Request, res: Response, next: NextFunction) => {
     try {
-      const fs = require('fs');
       const filePath = path.join(process.cwd(), 'FILE_HIERARCHY.md');
       if (fs.existsSync(filePath)) {
         res.type('text/markdown').send(fs.readFileSync(filePath, 'utf-8'));
@@ -484,7 +511,6 @@ async function startServer() {
 
   app.get('/api/docs/sop', (_req: Request, res: Response, next: NextFunction) => {
     try {
-      const fs = require('fs');
       const filePath = path.join(process.cwd(), 'AUDIT_POLICY_SOP_RULES.md');
       if (fs.existsSync(filePath)) {
         res.type('text/markdown').send(fs.readFileSync(filePath, 'utf-8'));
