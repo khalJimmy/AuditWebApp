@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Settings, User } from '../types';
 import { SparkUsageMetrics } from './SparkUsageMetrics';
+import { EmailTemplatesPreview } from './EmailTemplatesPreview';
 
 interface SettingsViewProps {
   settings: Settings;
@@ -94,26 +95,35 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
         <div className="card">
           <div className="ctitle">
-            <span className="cg-icon">E</span> Email Notification Templates
+            <span className="cg-icon">E</span> Email Notification Settings
           </div>
-          <div className="field" style={{ marginBottom: '14px' }}>
-            <label>Dispatch Notification Template (SPOC &amp; HOD)</label>
-            <textarea
-              rows={4}
-              value={form.dispatchTemplate}
-              onChange={e => setForm({ ...form, dispatchTemplate: e.target.value })}
-            />
-          </div>
+          <div className="fg c2" style={{ marginBottom: '14px' }}>
+            <div className="field">
+              <label>Dispatch Notification Header Subject (SPOC &amp; HOD)</label>
+              <textarea
+                rows={2}
+                value={form.dispatchTemplate}
+                onChange={e => setForm({ ...form, dispatchTemplate: e.target.value })}
+              />
+            </div>
 
-          <div className="field">
-            <label>Reminder Email Template</label>
-            <textarea
-              rows={4}
-              value={form.reminderTemplate}
-              onChange={e => setForm({ ...form, reminderTemplate: e.target.value })}
-            />
+            <div className="field">
+              <label>Reminder Email SLA Header Subject</label>
+              <textarea
+                rows={2}
+                value={form.reminderTemplate}
+                onChange={e => setForm({ ...form, reminderTemplate: e.target.value })}
+              />
+            </div>
           </div>
         </div>
+
+        {/* FIREBASE EMAIL SMTP DISPATCHED TEMPLATES & INTERACTIVE POSTCARD PREVIEW */}
+        <EmailTemplatesPreview
+          onToast={onToast}
+          systemEmail={form.systemEmail}
+          tatHours={form.tatHours}
+        />
 
         <div className="card">
           <div className="ctitle">
