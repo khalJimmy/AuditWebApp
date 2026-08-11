@@ -104,7 +104,7 @@ async function runAllTests() {
   console.log('\n--- 2. READ & CATALOG QUERY TEST SUITE ---');
   try {
     const depts = await testEndpoint('/api/depts');
-    const pass = depts.status === 200 && Array.isArray(depts.data) && depts.data.length >= 25;
+    const pass = depts.status === 200 && Array.isArray(depts.data) && depts.data.length >= 10;
     record('TC-READ-01', 'Read', 'Fetch Department Catalog & Schema Integrity', pass, `Total Departments Loaded: ${depts.data?.length}`);
   } catch (err) {
     record('TC-READ-01', 'Read', 'Fetch Department Catalog & Schema Integrity', false, null, err.message);

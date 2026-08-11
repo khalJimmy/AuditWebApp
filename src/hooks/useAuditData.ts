@@ -1,9 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Department, User, AuditReport, PlanItem, AuditTask, Settings } from '../types';
+import { DepartmentModel } from '../models/DepartmentModel';
+import { DepartmentCatalog } from '../models/DepartmentCatalog';
 import { api } from '../services/api';
 
 export function useAuditData(currentUser: User | null) {
-  const [depts, setDepts] = useState<Department[]>([]);
+  const [depts, setDepts] = useState<DepartmentModel[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [audits, setAudits] = useState<AuditReport[]>([]);
   const [plans, setPlans] = useState<PlanItem[]>([]);
@@ -166,10 +168,21 @@ export function useAuditData(currentUser: User | null) {
     }
   };
 
+  const deptCatalog = useMemo(() => new DepartmentCatalog(depts), [depts]);
+
   const saveDept = async (dept: Department) => {
     try {
-      await api.saveDept(dept);
-      await fetchAll();
+      const res = await api.saveDept(dept);
+      const savedModel = DepartmentModel.fromJSON(res.department || dept);
+      setDepts((prev) => {
+        const index = prev.findIndex((d) => d.ref.toLowerCase() === savedModel.ref.toLowerCase());
+        if (index >= 0) {
+          const updated = [...prev];
+          updated[index] = savedModel;
+          return updated;
+        }
+        return [...prev, savedModel];
+      });
       addToast('✅ Department updated successfully');
     } catch (err: any) {
       setError(err.message);
@@ -181,7 +194,7 @@ export function useAuditData(currentUser: User | null) {
   const deleteDept = async (ref: string) => {
     try {
       await api.deleteDept(ref);
-      await fetchAll();
+      setDepts((prev) => prev.filter((d) => d.ref.toLowerCase() !== ref.toLowerCase()));
       addToast('✅ Department deleted');
     } catch (err: any) {
       setError(err.message);
@@ -253,6 +266,7 @@ export function useAuditData(currentUser: User | null) {
 
   return {
     depts,
+    deptCatalog,
     users,
     audits,
     plans,

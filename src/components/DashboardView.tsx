@@ -101,8 +101,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ audits, tasks, pla
     });
   }, [audits, plans]);
 
-  // SPOC & HOD METRICS COMPUTATION
-  const spocHodStats = React.useMemo(() => {
+  // DEPARTMENT METRICS COMPUTATION
+  const deptMetricsStats = React.useMemo(() => {
     const map: Record<string, { dept: string; fn: string; spocMail: string; hodMail: string; totalDispatches: number; closedOnTime: number; overdueBreached: number }> = {};
 
     depts.forEach(d => {
@@ -151,7 +151,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ audits, tasks, pla
           <div className="pt">
             Audit <em>Command Centre</em>
           </div>
-          <div className="ps">Live status · All zones · Auditor, SPOC &amp; HOD metrics</div>
+          <div className="ps">Live status · All zones · Auditor &amp; Department SLA metrics</div>
         </div>
         <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
           <select
@@ -223,7 +223,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ audits, tasks, pla
           className={`btn btn-xs ${dashSection === 'spocs' ? 'btn-g' : 'btn-o'}`}
           onClick={() => setDashSection('spocs')}
         >
-          👥 SPOC &amp; HOD SLA Metrics
+          🏢 Department SLA Metrics
         </button>
       </div>
 
@@ -269,14 +269,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ audits, tasks, pla
                     <div>Ref</div>
                     <div>Function</div>
                     <div>Compliance</div>
-                    <div>Audits</div>
-                    <div>NC</div>
-                    <div>Obs</div>
-                    <div>Risk</div>
-                    <div>CI</div>
-                    <div>Open</div>
-                    <div>Closed</div>
-                    <div></div>
+                    <div style={{ textAlign: 'center' }}>Audits</div>
+                    <div style={{ textAlign: 'center' }}>NC</div>
+                    <div style={{ textAlign: 'center' }}>Obs</div>
+                    <div style={{ textAlign: 'center' }}>Risk</div>
+                    <div style={{ textAlign: 'center' }}>CI</div>
+                    <div style={{ textAlign: 'center' }}>Open</div>
+                    <div style={{ textAlign: 'center' }}>Closed</div>
                   </div>
 
                   {deptRefs.length === 0 ? (
@@ -325,7 +324,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ audits, tasks, pla
                           <div style={{ textAlign: 'center' }}>
                             <span className="badge bg">{dclose} Closed</span>
                           </div>
-                          <div />
                         </div>
                       );
                     })
@@ -345,11 +343,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ audits, tasks, pla
               <thead>
                 <tr style={{ background: 'var(--neutral-100)', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
                   <th style={{ padding: '8px 12px' }}>Auditor Name</th>
-                  <th style={{ padding: '8px 12px' }}>Audits Conducted</th>
-                  <th style={{ padding: '8px 12px' }}>Avg Compliance Score %</th>
-                  <th style={{ padding: '8px 12px' }}>Scheduled Plans</th>
-                  <th style={{ padding: '8px 12px' }}>Completed Plans</th>
-                  <th style={{ padding: '8px 12px' }}>Completion Rate</th>
+                  <th style={{ padding: '8px 12px', textAlign: 'center' }}>Audits Conducted</th>
+                  <th style={{ padding: '8px 12px', textAlign: 'center' }}>Avg Compliance Score %</th>
+                  <th style={{ padding: '8px 12px', textAlign: 'center' }}>Scheduled Plans</th>
+                  <th style={{ padding: '8px 12px', textAlign: 'center' }}>Completed Plans</th>
+                  <th style={{ padding: '8px 12px', textAlign: 'center' }}>Completion Rate</th>
                 </tr>
               </thead>
               <tbody>
@@ -360,15 +358,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ audits, tasks, pla
                   return (
                     <tr key={aud.name} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '10px 12px', fontWeight: 600 }}>{aud.name}</td>
-                      <td style={{ padding: '10px 12px' }}><span className="badge bb">{aud.totalAudits}</span></td>
-                      <td style={{ padding: '10px 12px' }}>
+                      <td style={{ padding: '10px 12px', textAlign: 'center' }}><span className="badge bb">{aud.totalAudits}</span></td>
+                      <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                         <span className={`badge ${aud.avgCompliance >= 80 ? 'bg' : aud.avgCompliance >= 60 ? 'by' : 'br'}`}>
                           {aud.avgCompliance}%
                         </span>
                       </td>
-                      <td style={{ padding: '10px 12px' }}>{aud.scheduled}</td>
-                      <td style={{ padding: '10px 12px' }}>{aud.completed}</td>
-                      <td style={{ padding: '10px 12px' }}>
+                      <td style={{ padding: '10px 12px', textAlign: 'center' }}>{aud.scheduled}</td>
+                      <td style={{ padding: '10px 12px', textAlign: 'center' }}>{aud.completed}</td>
+                      <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                         <strong style={{ color: rate >= 80 ? 'var(--green)' : 'var(--amber)' }}>{rate}%</strong>
                       </td>
                     </tr>
@@ -382,7 +380,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ audits, tasks, pla
 
       {dashSection === 'spocs' && (
         <div className="card" style={{ marginBottom: '18px' }}>
-          <div className="ctitle">👥 SPOC &amp; HOD SLA Resolution Performance</div>
+          <div className="ctitle">🏢 Department SLA Resolution Performance</div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
               <thead>
@@ -390,28 +388,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ audits, tasks, pla
                   <th style={{ padding: '8px 12px' }}>Department &amp; Function</th>
                   <th style={{ padding: '8px 12px' }}>SPOC Email</th>
                   <th style={{ padding: '8px 12px' }}>HOD Email</th>
-                  <th style={{ padding: '8px 12px' }}>Dispatched Findings</th>
-                  <th style={{ padding: '8px 12px' }}>Closed On Time</th>
-                  <th style={{ padding: '8px 12px' }}>SLA Overdue Breaches</th>
-                  <th style={{ padding: '8px 12px' }}>Status</th>
+                  <th style={{ padding: '8px 12px', textAlign: 'center' }}>Dispatched Findings</th>
+                  <th style={{ padding: '8px 12px', textAlign: 'center' }}>Closed On Time</th>
+                  <th style={{ padding: '8px 12px', textAlign: 'center' }}>SLA Overdue Breaches</th>
+                  <th style={{ padding: '8px 12px', textAlign: 'center' }}>Status</th>
                 </tr>
               </thead>
               <tbody>
-                {spocHodStats.map((item, idx) => (
+                {deptMetricsStats.map((item, idx) => (
                   <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '10px 12px' }}>
                       <strong>{item.fn}</strong> ({item.dept})
                     </td>
                     <td style={{ padding: '10px 12px', fontSize: '11px', color: 'var(--muted)' }}>{item.spocMail}</td>
                     <td style={{ padding: '10px 12px', fontSize: '11px', color: 'var(--muted)' }}>{item.hodMail}</td>
-                    <td style={{ padding: '10px 12px' }}><span className="badge bb">{item.totalDispatches}</span></td>
-                    <td style={{ padding: '10px 12px' }}><span className="badge bg">{item.closedOnTime}</span></td>
-                    <td style={{ padding: '10px 12px' }}>
+                    <td style={{ padding: '10px 12px', textAlign: 'center' }}><span className="badge bb">{item.totalDispatches}</span></td>
+                    <td style={{ padding: '10px 12px', textAlign: 'center' }}><span className="badge bg">{item.closedOnTime}</span></td>
+                    <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                       <span className={`badge ${item.overdueBreached > 0 ? 'br' : 'bm'}`}>
                         {item.overdueBreached}
                       </span>
                     </td>
-                    <td style={{ padding: '10px 12px' }}>
+                    <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                       {item.overdueBreached > 0 ? (
                         <span className="tat tover">ESCALATED TO HOD</span>
                       ) : (

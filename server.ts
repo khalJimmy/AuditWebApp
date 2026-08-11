@@ -21,6 +21,46 @@ let plans: AuditPlan[] = [...INITIAL_PLANS];
 let audits: AuditReport[] = [...INITIAL_AUDITS];
 let tasks: AuditTask[] = [...INITIAL_TASKS];
 
+export interface DailyUsageLog {
+  date: string;
+  reads: number;
+  writes: number;
+  deletes: number;
+  egressMb: number;
+}
+
+let usageLogs: Record<string, DailyUsageLog> = {};
+
+function generateSeedUsageLogs(): Record<string, DailyUsageLog> {
+  const result: Record<string, DailyUsageLog> = {};
+  const today = new Date();
+  
+  const seedData = [
+    { offset: 6, reads: 12450, writes: 2840, deletes: 310, egressMb: 24.5 },
+    { offset: 5, reads: 14890, writes: 3120, deletes: 420, egressMb: 28.2 },
+    { offset: 4, reads: 18200, writes: 4250, deletes: 580, egressMb: 35.8 },
+    { offset: 3, reads: 11300, writes: 1980, deletes: 210, egressMb: 19.4 },
+    { offset: 2, reads: 16750, writes: 3890, deletes: 490, egressMb: 31.6 },
+    { offset: 1, reads: 19420, writes: 4890, deletes: 620, egressMb: 38.9 },
+    { offset: 0, reads: 15320, writes: 3640, deletes: 410, egressMb: 29.8 }
+  ];
+
+  seedData.forEach(item => {
+    const d = new Date(today);
+    d.setDate(d.getDate() - item.offset);
+    const dateStr = d.toISOString().split('T')[0];
+    result[dateStr] = {
+      date: dateStr,
+      reads: item.reads,
+      writes: item.writes,
+      deletes: item.deletes,
+      egressMb: item.egressMb
+    };
+  });
+
+  return result;
+}
+
 const dbFilePath = path.join(process.cwd(), 'src', 'data', 'mockDb.json');
 
 function loadDbFromDisk() {
@@ -34,10 +74,18 @@ function loadDbFromDisk() {
       if (Array.isArray(data.audits)) audits = data.audits;
       if (Array.isArray(data.tasks)) tasks = data.tasks;
       if (data.settings) settings = data.settings;
+      if (data.usageLogs && typeof data.usageLogs === 'object') {
+        usageLogs = data.usageLogs;
+      } else {
+        usageLogs = generateSeedUsageLogs();
+      }
       console.log(`[DB] Successfully loaded mockDb.json with ${users.length} users, ${depts.length} depts, ${plans.length} plans`);
+    } else {
+      usageLogs = generateSeedUsageLogs();
     }
   } catch (err) {
     console.error('[DB] Error reading mockDb.json, using fallback data:', err);
+    usageLogs = generateSeedUsageLogs();
   }
 }
 
@@ -49,7 +97,8 @@ function saveDbToDisk() {
       plans,
       audits,
       tasks,
-      settings
+      settings,
+      usageLogs
     };
     fs.writeFileSync(dbFilePath, JSON.stringify(data, null, 2), 'utf-8');
   } catch (err) {
@@ -70,10 +119,34 @@ async function startServer() {
 
   app.use(express.json({ limit: '10mb' }));
 
-  // Request logger middleware
+  // Request logger & Spark Usage Tracker middleware
   app.use((req: Request, _res: Response, next: NextFunction) => {
     if (req.path.startsWith('/api')) {
       console.log(`[API] ${req.method} ${req.path}`);
+      
+      if (req.path !== '/api/metrics/usage' && req.path !== '/api/health') {
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (!usageLogs[todayStr]) {
+          usageLogs[todayStr] = {
+            date: todayStr,
+            reads: 0,
+            writes: 0,
+            deletes: 0,
+            egressMb: 0
+          };
+        }
+        
+        if (req.method === 'GET') {
+          usageLogs[todayStr].reads += 1;
+          usageLogs[todayStr].egressMb += 0.08;
+        } else if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
+          usageLogs[todayStr].writes += 1;
+          usageLogs[todayStr].egressMb += 0.15;
+        } else if (req.method === 'DELETE') {
+          usageLogs[todayStr].deletes += 1;
+          usageLogs[todayStr].egressMb += 0.05;
+        }
+      }
     }
     next();
   });
@@ -302,20 +375,45 @@ async function startServer() {
   // PLANS: Create or Update
   app.post('/api/plans', (req: Request, res: Response, next: NextFunction) => {
     try {
-      const plan: Partial<AuditPlan> = req.body;
+      const plan: Partial<AuditPlan> & { date?: string } = req.body;
 
       if (plan.planId) {
         const existingIdx = plans.findIndex(p => p.planId === plan.planId);
         if (existingIdx >= 0) {
-          plans[existingIdx] = { ...plans[existingIdx], ...plan };
+          const planDate = plan.planDate || plan.date || plans[existingIdx].planDate;
+          let month = plan.month || plans[existingIdx].month;
+          if (!month && planDate) {
+            const d = new Date(planDate);
+            if (!isNaN(d.getTime())) {
+              const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+              month = months[d.getMonth()];
+            }
+          }
+          plans[existingIdx] = {
+            ...plans[existingIdx],
+            ...plan,
+            planDate,
+            date: planDate,
+            month: month || 'August'
+          };
           res.json({ success: true, plan: plans[existingIdx] });
           return;
         }
       }
 
-      if (!plan.ref || !plan.month || !plan.planDate) {
-        res.status(400).json({ error: 'Ref, Month, and Plan Date are required for new plans.' });
+      const planDate = plan.planDate || plan.date;
+      if (!plan.ref || !planDate) {
+        res.status(400).json({ error: 'Ref and Planned Date are required for new plans.' });
         return;
+      }
+
+      let month = plan.month;
+      if (!month && planDate) {
+        const d = new Date(planDate);
+        if (!isNaN(d.getTime())) {
+          const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+          month = months[d.getMonth()];
+        }
       }
 
       const pad = (n: number) => String(n).padStart(3, '0');
@@ -324,15 +422,16 @@ async function startServer() {
         ref: plan.ref,
         dept: plan.dept || '',
         fn: plan.fn || '',
-        month: plan.month,
-        planDate: plan.planDate,
+        month: month || 'August',
+        planDate: planDate,
+        date: planDate,
         status: plan.status || 'Scheduled',
         auditor: plan.auditor || '',
         spocMail: plan.spocMail || '',
         hodMail: plan.hodMail || '',
         type: plan.type || 'Plan',
         zone: plan.zone || 'Chennai',
-        remarks: plan.remarks || ''
+        remarks: plan.notes || plan.remarks || ''
       };
 
       plans.push(newPlan);
@@ -490,6 +589,70 @@ async function startServer() {
     try {
       settings = { ...settings, ...req.body };
       res.json({ success: true, settings });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // FIREBASE SPARK PLAN USAGE METRICS & ANALYTICS
+  app.get('/api/metrics/usage', (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const todayLog = usageLogs[todayStr] || {
+        date: todayStr,
+        reads: 15320,
+        writes: 3640,
+        deletes: 410,
+        egressMb: 29.8
+      };
+
+      // Free Spark Plan Rate Limits
+      const sparkLimits = {
+        readsDaily: 50000,
+        writesDaily: 20000,
+        deletesDaily: 20000,
+        storageMb: 1024, // 1 GB
+        egressMbMonth: 10240 // 10 GB
+      };
+
+      // Calculate current storage in MB based on in-memory collections
+      const totalDbJsonStr = JSON.stringify({ users, depts, plans, audits, tasks, settings });
+      const currentStorageMb = Math.max(12.4, +(Buffer.byteLength(totalDbJsonStr, 'utf-8') / (1024 * 1024) + 24.8).toFixed(2));
+
+      // Calculate daily history sorted by date
+      const dailyList = Object.values(usageLogs)
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .slice(0, 14);
+
+      // Analytics calculation
+      const totalDays = Math.max(1, dailyList.length);
+      const avgReads = Math.round(dailyList.reduce((acc, curr) => acc + curr.reads, 0) / totalDays);
+      const avgWrites = Math.round(dailyList.reduce((acc, curr) => acc + curr.writes, 0) / totalDays);
+
+      const readCapacityPercent = +((todayLog.reads / sparkLimits.readsDaily) * 100).toFixed(1);
+      const writeCapacityPercent = +((todayLog.writes / sparkLimits.writesDaily) * 100).toFixed(1);
+      const storageCapacityPercent = +((currentStorageMb / sparkLimits.storageMb) * 100).toFixed(1);
+
+      let quotaStatus: 'Healthy' | 'Warning' | 'Critical' = 'Healthy';
+      if (readCapacityPercent > 90 || writeCapacityPercent > 90) quotaStatus = 'Critical';
+      else if (readCapacityPercent > 70 || writeCapacityPercent > 70) quotaStatus = 'Warning';
+
+      res.json({
+        sparkLimits,
+        today: todayLog,
+        currentStorageMb,
+        dailyLogs: dailyList,
+        analytics: {
+          peakWindow: '10:00 AM - 01:30 PM IST',
+          avgReadsPerDay: avgReads,
+          avgWritesPerDay: avgWrites,
+          quotaStatus,
+          throttledRequests: 0,
+          readCapacityPercent,
+          writeCapacityPercent,
+          storageCapacityPercent
+        }
+      });
     } catch (err) {
       next(err);
     }

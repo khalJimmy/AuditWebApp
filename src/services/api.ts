@@ -1,4 +1,5 @@
 import { User, Department, AuditReport, PlanItem, AuditTask, Settings } from '../types';
+import { DepartmentModel } from '../models/DepartmentModel';
 
 export class ApiError extends Error {
   status: number;
@@ -48,7 +49,10 @@ export const api = {
   getMe: () => request<{ user: User }>('/api/auth/me'),
 
   // Departments
-  getDepts: () => request<Department[]>('/api/depts'),
+  getDepts: async (): Promise<DepartmentModel[]> => {
+    const data = await request<Department[]>('/api/depts');
+    return DepartmentModel.fromList(data);
+  },
 
   saveDept: (dept: Department) =>
     request<{ success: boolean; department: Department }>('/api/depts', {
@@ -144,5 +148,24 @@ export const api = {
   resetData: () =>
     request<{ success: boolean }>('/api/reset', {
       method: 'POST'
-    })
+    }),
+
+  // Spark Plan Usage Metrics
+  getUsageMetrics: () =>
+    request<{
+      sparkLimits: { readsDaily: number; writesDaily: number; deletesDaily: number; storageMb: number; egressMbMonth: number };
+      today: { date: string; reads: number; writes: number; deletes: number; egressMb: number };
+      currentStorageMb: number;
+      dailyLogs: Array<{ date: string; reads: number; writes: number; deletes: number; egressMb: number }>;
+      analytics: {
+        peakWindow: string;
+        avgReadsPerDay: number;
+        avgWritesPerDay: number;
+        quotaStatus: 'Healthy' | 'Warning' | 'Critical';
+        throttledRequests: number;
+        readCapacityPercent: number;
+        writeCapacityPercent: number;
+        storageCapacityPercent: number;
+      };
+    }>('/api/metrics/usage')
 };

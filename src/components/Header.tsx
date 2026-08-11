@@ -11,10 +11,10 @@ interface HeaderProps {
 }
 
 const NAVMAP: Record<string, string[]> = {
-  admin: ['dash', 'plan', 'audit', 'dispatch', 'tracker', 'records', 'depts', 'users', 'kanban', 'settings'],
-  auditor: ['dash', 'plan', 'audit', 'records', 'kanban'],
-  spoc: ['spoc', 'kanban'],
-  hod: ['dash', 'tracker', 'records', 'kanban']
+  admin: ['dash', 'plan', 'audit', 'dispatch', 'tracker', 'records', 'depts', 'users', 'settings'],
+  auditor: ['dash', 'plan', 'audit', 'records'],
+  spoc: ['spoc'],
+  hod: ['dash', 'tracker', 'records']
 };
 
 const NAVLABELS: Record<string, string> = {
@@ -27,7 +27,6 @@ const NAVLABELS: Record<string, string> = {
   spoc: '📋 My Actions',
   depts: '🏢 Departments',
   users: '👥 Users',
-  kanban: '📋 Operations Kanban',
   settings: '⚙ Settings'
 };
 

@@ -17,7 +17,6 @@ import { SpocActionsView } from './components/SpocActionsView';
 import { SpocRespondOverlay } from './components/SpocRespondOverlay';
 import { DepartmentsView } from './components/DepartmentsView';
 import { UsersView } from './components/UsersView';
-import { KanbanBoardView } from './components/KanbanBoardView';
 import { SettingsView } from './components/SettingsView';
 
 import {
@@ -220,10 +219,6 @@ export function App() {
           />
         )}
 
-        {activeTab === 'kanban' && (
-          <KanbanBoardView />
-        )}
-
         {activeTab === 'settings' && (
           <SettingsView
             settings={auditData.settings}
@@ -268,6 +263,7 @@ export function App() {
           onSave={auditData.savePlan}
           depts={auditData.depts}
           editingPlan={editingPlan}
+          currentUser={user}
         />
       )}
 

@@ -141,14 +141,29 @@ export const AuditFormView: React.FC<AuditFormViewProps> = ({
     if (found) {
       setDept(found.dept);
       setFn(found.fn);
-      if (found.hm) {
-        const emails = found.hm.match(/[\w.+%-]+@[\w.-]+\.\w+/g) || [found.hm];
-        setHod(emails[0] || found.hm);
-      }
+      const contacts = getZoneDeptContacts(newRef, zone, depts);
+      setSpocMail(contacts.spocMail);
+      setHodMail(contacts.hodMail);
+      setHod(contacts.hodName || (contacts.hodMail ? contacts.hodMail.split('@')[0] : ''));
+      setAuditee(contacts.spocName || (contacts.spocMail ? contacts.spocMail.split('@')[0] : ''));
     } else {
       setDept('');
       setFn('');
       setHod('');
+      setSpocMail('');
+      setHodMail('');
+      setAuditee('');
+    }
+  };
+
+  const handleZoneChange = (newZone: string) => {
+    setZone(newZone);
+    if (ref) {
+      const contacts = getZoneDeptContacts(ref, newZone, depts);
+      setSpocMail(contacts.spocMail);
+      setHodMail(contacts.hodMail);
+      setHod(contacts.hodName || (contacts.hodMail ? contacts.hodMail.split('@')[0] : ''));
+      setAuditee(contacts.spocName || (contacts.spocMail ? contacts.spocMail.split('@')[0] : ''));
     }
   };
 
@@ -460,7 +475,7 @@ export const AuditFormView: React.FC<AuditFormViewProps> = ({
           </div>
           <div className="field">
             <label>Zone *</label>
-            <select value={zone} onChange={e => setZone(e.target.value)}>
+            <select value={zone} onChange={e => handleZoneChange(e.target.value)}>
               <option value="">— Zone —</option>
               <option>Chennai</option>
               <option>Coimbatore</option>

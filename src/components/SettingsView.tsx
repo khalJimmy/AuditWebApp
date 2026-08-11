@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Settings, User } from '../types';
+import { SparkUsageMetrics } from './SparkUsageMetrics';
 
 interface SettingsViewProps {
   settings: Settings;
@@ -17,29 +18,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onToast
 }) => {
   const [form, setForm] = useState<Settings>({ ...settings });
-  const [activeDoc, setActiveDoc] = useState<'none' | 'hierarchy' | 'sop'>('hierarchy');
-  const [docContent, setDocContent] = useState<string>('');
-  const [loadingDoc, setLoadingDoc] = useState<boolean>(false);
-
-  const fetchDoc = async (type: 'hierarchy' | 'sop') => {
-    setActiveDoc(type);
-    setLoadingDoc(true);
-    try {
-      const endpoint = type === 'hierarchy' ? '/api/docs/hierarchy' : '/api/docs/sop';
-      const res = await fetch(endpoint);
-      if (!res.ok) throw new Error('Failed loading document');
-      const text = await res.text();
-      setDocContent(text);
-    } catch (err: any) {
-      onToast(`❌ Error loading doc: ${err.message}`);
-    } finally {
-      setLoadingDoc(false);
-    }
-  };
-
-  React.useEffect(() => {
-    fetchDoc('hierarchy');
-  }, []);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,7 +47,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div className="pt">
             System <em>Settings</em>
           </div>
-          <div className="ps">SLA TAT · Email Notifications · Standard Criteria Configuration</div>
+          <div className="ps">SLA TAT · Email Notifications · Firebase Spark Plan Rate Limits &amp; Usage Metrics</div>
         </div>
         <button className="btn btn-g" onClick={handleSave}>
           💾 Save Settings
@@ -79,7 +57,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <form onSubmit={handleSave}>
         <div className="card">
           <div className="ctitle">
-            <span className="cg-icon">S</span> SLA & Audit Parameters
+            <span className="cg-icon">S</span> SLA &amp; Audit Parameters
           </div>
           <div className="fg c3">
             <div className="field">
@@ -119,7 +97,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <span className="cg-icon">E</span> Email Notification Templates
           </div>
           <div className="field" style={{ marginBottom: '14px' }}>
-            <label>Dispatch Notification Template (SPOC & HOD)</label>
+            <label>Dispatch Notification Template (SPOC &amp; HOD)</label>
             <textarea
               rows={4}
               value={form.dispatchTemplate}
@@ -151,68 +129,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         </div>
 
-        {/* GOVERNANCE & ARCHITECTURE FILE VIEWER */}
-        <div className="card" style={{ borderLeft: '4px solid var(--navy)' }}>
-          <div className="ctitle" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span><span className="cg-icon">📜</span> System Governance & Architecture Flow Tree</span>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                type="button"
-                className={`btn btn-xs ${activeDoc === 'hierarchy' ? 'btn-g' : 'btn-o'}`}
-                onClick={() => fetchDoc('hierarchy')}
-              >
-                🌳 1. Connected File Hierarchy Tree
-              </button>
-              <button
-                type="button"
-                className={`btn btn-xs ${activeDoc === 'sop' ? 'btn-g' : 'btn-o'}`}
-                onClick={() => fetchDoc('sop')}
-              >
-                📜 2. Operations SOP & Rules Policy
-              </button>
-            </div>
-          </div>
-          <p style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '12px' }}>
-            Official operational rules, 72h SLA TAT policy, scoring formulas, finding classifications, and connected file hierarchy trees (`FILE_HIERARCHY.md` & `AUDIT_POLICY_SOP_RULES.md`).
-          </p>
-
-          <div
-            style={{
-              background: '#0f172a',
-              color: '#e2e8f0',
-              padding: '16px',
-              borderRadius: '8px',
-              fontFamily: 'monospace',
-              fontSize: '12px',
-              maxHeight: '420px',
-              overflowY: 'auto',
-              whiteSpace: 'pre-wrap',
-              lineHeight: '1.5',
-              border: '1px solid #334155'
-            }}
-          >
-            {loadingDoc ? (
-              <div style={{ color: '#94a3b8', textAlign: 'center', padding: '20px' }}>Loading governance document...</div>
-            ) : (
-              docContent || 'No document loaded'
-            )}
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
-            <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
-              Target Files: {activeDoc === 'hierarchy' ? 'FILE_HIERARCHY.md' : 'AUDIT_POLICY_SOP_RULES.md'}
-            </span>
-            <button
-              type="button"
-              className="btn btn-o btn-xs"
-              onClick={() => {
-                navigator.clipboard.writeText(docContent);
-                onToast('📋 Copied document to clipboard');
-              }}
-            >
-              📋 Copy Document Text
-            </button>
-          </div>
-        </div>
+        {/* FIREBASE SPARK PLAN USAGE METRICS & ANALYTICS */}
+        <SparkUsageMetrics onToast={onToast} />
 
         {currentUser.role === 'admin' && (
           <div className="card" style={{ borderColor: '#fca5a5' }}>

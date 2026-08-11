@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Department } from '../types';
+import { DepartmentCatalog } from '../models/DepartmentCatalog';
+import { DepartmentModel } from '../models/DepartmentModel';
 import * as XLSX from 'xlsx';
 
 interface DepartmentsViewProps {
-  depts: Department[];
+  depts: (Department | DepartmentModel)[];
   onOpenDeptModal: (ref?: string) => void;
   onOpenImportModal: () => void;
   onDeleteDept: (ref: string) => void;
@@ -19,16 +21,8 @@ export const DepartmentsView: React.FC<DepartmentsViewProps> = ({
 }) => {
   const [search, setSearch] = useState('');
 
-  const q = search.toLowerCase().trim();
-  let filtered = depts;
-  if (q) {
-    filtered = filtered.filter(
-      d =>
-        d.ref.toLowerCase().includes(q) ||
-        d.dept.toLowerCase().includes(q) ||
-        d.fn.toLowerCase().includes(q)
-    );
-  }
+  const catalog = useMemo(() => new DepartmentCatalog(depts), [depts]);
+  const filtered = useMemo(() => catalog.search(search), [catalog, search]);
 
   const exportExcel = () => {
     const wb = XLSX.utils.book_new();

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { PlanItem, AuditReport, Department, User, UserRole } from '../types';
+import { PlanItem, AuditReport, Department, User, UserRole, ZoneName } from '../types';
+import { getZoneDeptContacts } from '../data/departmentsData';
 import { h6 } from '../data/usersData';
 import * as XLSX from 'xlsx';
 
@@ -9,41 +10,57 @@ interface PlanModalProps {
   onSave: (plan: Omit<PlanItem, 'id' | 'createdAt'>) => Promise<void>;
   depts: Department[];
   editingPlan?: PlanItem | null;
+  currentUser?: User | null;
 }
 
-export const PlanModal: React.FC<PlanModalProps> = ({ onClose, onSave, depts, editingPlan }) => {
-  const [ref, setRef] = useState(editingPlan?.ref || (depts[0]?.ref || 'CSD'));
-  const [date, setDate] = useState(editingPlan?.date || new Date().toISOString().split('T')[0]);
-  const [auditor, setAuditor] = useState(editingPlan?.auditor || 'Prem Anand');
+export const PlanModal: React.FC<PlanModalProps> = ({ onClose, onSave, depts, editingPlan, currentUser }) => {
+  const [ref, setRef] = useState(editingPlan?.ref || (depts[0]?.ref || 'A'));
+  const [date, setDate] = useState(editingPlan?.planDate || editingPlan?.date || new Date().toISOString().split('T')[0]);
+  const [zone, setZone] = useState<ZoneName | string>(editingPlan?.zone || currentUser?.zone || 'Chennai');
+  const [auditor, setAuditor] = useState(editingPlan?.auditor || currentUser?.name || 'Prem Anand');
   const [auditee, setAuditee] = useState(editingPlan?.auditee || '');
   const [hod, setHod] = useState(editingPlan?.hod || '');
   const [spocMail, setSpocMail] = useState(editingPlan?.spocMail || '');
   const [hodMail, setHodMail] = useState(editingPlan?.hodMail || '');
-  const [notes, setNotes] = useState(editingPlan?.notes || '');
+  const [notes, setNotes] = useState(editingPlan?.notes || editingPlan?.remarks || '');
 
-  // Auto-fill SPOC & HOD email if dept changes
+  // Auto-fill SPOC & HOD email based on Zone & Dept
   useEffect(() => {
-    const d = depts.find(x => x.ref === ref);
-    if (d) {
-      if (!spocMail) setSpocMail(d.sm || '');
-      if (!hodMail) setHodMail(d.hm || '');
+    if (ref && !editingPlan) {
+      const contacts = getZoneDeptContacts(ref, zone, depts);
+      setSpocMail(contacts.spocMail);
+      setHodMail(contacts.hodMail);
+      if (contacts.hodName) setHod(contacts.hodName);
+      else if (contacts.hodMail) setHod(contacts.hodMail.split('@')[0]);
+      if (contacts.spocName) setAuditee(contacts.spocName);
     }
-  }, [ref, depts]);
+  }, [ref, zone, depts, editingPlan]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const d = depts.find(x => x.ref === ref);
+    
+    // Calculate month name from selected date
+    const dateObj = new Date(date);
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const month = !isNaN(dateObj.getTime()) ? months[dateObj.getMonth()] : 'August';
+
     await onSave({
+      ...(editingPlan?.planId ? { planId: editingPlan.planId } : {}),
       ref,
       dept: d?.dept || ref,
       fn: d?.fn || ref,
       date,
+      planDate: date,
+      month,
+      zone: (zone as ZoneName) || 'Chennai',
       auditor,
       auditee,
       hod,
       spocMail,
       hodMail,
-      notes
+      notes,
+      remarks: notes
     });
     onClose();
   };
@@ -57,15 +74,25 @@ export const PlanModal: React.FC<PlanModalProps> = ({ onClose, onSave, depts, ed
         </div>
 
         <form onSubmit={handleSubmit}>
-          <div className="field" style={{ marginBottom: '12px' }}>
-            <label>Department / Function *</label>
-            <select value={ref} onChange={e => setRef(e.target.value)} required>
-              {depts.map(d => (
-                <option key={d.ref} value={d.ref}>
-                  [{d.ref}] {d.dept} — {d.fn}
-                </option>
-              ))}
-            </select>
+          <div className="fg c2" style={{ marginBottom: '12px' }}>
+            <div className="field">
+              <label>Department / Function *</label>
+              <select value={ref} onChange={e => setRef(e.target.value)} required>
+                {depts.map(d => (
+                  <option key={d.ref} value={d.ref}>
+                    [{d.ref}] {d.dept} — {d.fn}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label>Target Zone *</label>
+              <select value={zone} onChange={e => setZone(e.target.value as ZoneName)} required>
+                <option value="Chennai">Chennai</option>
+                <option value="Coimbatore">Coimbatore</option>
+                <option value="Bangalore">Bangalore</option>
+              </select>
+            </div>
           </div>
 
           <div className="fg c2" style={{ marginBottom: '12px' }}>
@@ -126,9 +153,9 @@ interface DispatchModalProps {
 }
 
 export const DispatchModal: React.FC<DispatchModalProps> = ({ auditId, audit, depts, onClose, onDispatch }) => {
-  const deptMatch = depts.find(d => d.ref === audit.ref || d.dept === audit.dept);
-  const [spocMail, setSpocMail] = useState(audit.spocMail || deptMatch?.sm || 'spoc@casagrand.co.in');
-  const [hodMail, setHodMail] = useState(audit.hodMail || deptMatch?.hm || 'hod@casagrand.co.in');
+  const contacts = getZoneDeptContacts(audit.ref, audit.zone, depts);
+  const [spocMail, setSpocMail] = useState(audit.spocMail || contacts.spocMail);
+  const [hodMail, setHodMail] = useState(audit.hodMail || contacts.hodMail);
   const [dispatching, setDispatching] = useState(false);
 
   const handleSend = async () => {
@@ -343,6 +370,24 @@ export const DeptModal: React.FC<DeptModalProps> = ({ onClose, onSave, editingDe
   const [sn, setSn] = useState(editingDept?.sn || '');
   const [sm, setSm] = useState(editingDept?.sm || '');
   const [hm, setHm] = useState(editingDept?.hm || '');
+  const [hodName, setHodName] = useState(editingDept?.hodName || '');
+
+  // Zone Overrides
+  const [showZoneOverrides, setShowZoneOverrides] = useState(!!editingDept?.zoneContacts);
+  const [chnSn, setChnSn] = useState(editingDept?.zoneContacts?.Chennai?.sn || '');
+  const [chnSm, setChnSm] = useState(editingDept?.zoneContacts?.Chennai?.sm || '');
+  const [chnHm, setChnHm] = useState(editingDept?.zoneContacts?.Chennai?.hm || '');
+  const [chnHod, setChnHod] = useState(editingDept?.zoneContacts?.Chennai?.hodName || '');
+
+  const [cbeSn, setCbeSn] = useState(editingDept?.zoneContacts?.Coimbatore?.sn || '');
+  const [cbeSm, setCbeSm] = useState(editingDept?.zoneContacts?.Coimbatore?.sm || '');
+  const [cbeHm, setCbeHm] = useState(editingDept?.zoneContacts?.Coimbatore?.hm || '');
+  const [cbeHod, setCbeHod] = useState(editingDept?.zoneContacts?.Coimbatore?.hodName || '');
+
+  const [blrSn, setBlrSn] = useState(editingDept?.zoneContacts?.Bangalore?.sn || '');
+  const [blrSm, setBlrSm] = useState(editingDept?.zoneContacts?.Bangalore?.sm || '');
+  const [blrHm, setBlrHm] = useState(editingDept?.zoneContacts?.Bangalore?.hm || '');
+  const [blrHod, setBlrHod] = useState(editingDept?.zoneContacts?.Bangalore?.hodName || '');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -350,13 +395,34 @@ export const DeptModal: React.FC<DeptModalProps> = ({ onClose, onSave, editingDe
       alert('Please provide Ref code and Department name.');
       return;
     }
-    await onSave({ ref: ref.toUpperCase().trim(), dept, fn: fn || dept, sn, sm, hm });
+
+    const zoneContacts: any = {};
+    if (chnSn || chnSm || chnHm || chnHod) {
+      zoneContacts.Chennai = { sn: chnSn, sm: chnSm, hm: chnHm, hodName: chnHod };
+    }
+    if (cbeSn || cbeSm || cbeHm || cbeHod) {
+      zoneContacts.Coimbatore = { sn: cbeSn, sm: cbeSm, hm: cbeHm, hodName: cbeHod };
+    }
+    if (blrSn || blrSm || blrHm || blrHod) {
+      zoneContacts.Bangalore = { sn: blrSn, sm: blrSm, hm: blrHm, hodName: blrHod };
+    }
+
+    await onSave({
+      ref: ref.toUpperCase().trim(),
+      dept,
+      fn: fn || dept,
+      sn,
+      sm,
+      hm,
+      hodName,
+      zoneContacts: Object.keys(zoneContacts).length > 0 ? zoneContacts : undefined
+    });
     onClose();
   };
 
   return (
     <div className="modal-overlay">
-      <div className="modal">
+      <div className="modal" style={{ maxWidth: '650px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <h3>{editingDept ? '✏ Edit Department' : '+ Add New Department'}</h3>
           <button className="btn btn-o btn-xs" onClick={onClose}>✕</button>
@@ -392,20 +458,77 @@ export const DeptModal: React.FC<DeptModalProps> = ({ onClose, onSave, editingDe
             <input type="text" value={fn} onChange={e => setFn(e.target.value)} placeholder="CSD Operations" />
           </div>
 
-          <div className="field" style={{ marginBottom: '12px' }}>
-            <label>SPOC Name</label>
-            <input type="text" value={sn} onChange={e => setSn(e.target.value)} placeholder="e.g. Anand" />
+          <div className="fg c2" style={{ marginBottom: '12px' }}>
+            <div className="field">
+              <label>Default SPOC Name</label>
+              <input type="text" value={sn} onChange={e => setSn(e.target.value)} placeholder="e.g. Anand" />
+            </div>
+            <div className="field">
+              <label>Default HOD Name</label>
+              <input type="text" value={hodName} onChange={e => setHodName(e.target.value)} placeholder="e.g. Suresh Kumar" />
+            </div>
           </div>
 
           <div className="fg c2" style={{ marginBottom: '16px' }}>
             <div className="field">
-              <label>SPOC Email</label>
+              <label>Default SPOC Email</label>
               <input type="email" value={sm} onChange={e => setSm(e.target.value)} placeholder="anand@casagrand.co.in" />
             </div>
             <div className="field">
-              <label>HOD Email</label>
+              <label>Default HOD Email</label>
               <input type="email" value={hm} onChange={e => setHm(e.target.value)} placeholder="hod.csd@casagrand.co.in" />
             </div>
+          </div>
+
+          {/* Toggle Zone-Specific SPOC / HOD Contact Details */}
+          <div style={{ marginBottom: '16px', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
+            <button
+              type="button"
+              className="btn btn-o btn-xs"
+              onClick={() => setShowZoneOverrides(!showZoneOverrides)}
+              style={{ marginBottom: '12px' }}
+            >
+              {showZoneOverrides ? '▼ Hide Zone-Specific Contacts' : '► Configure Zone-Specific SPOCs & HODs (Chennai / CBE / BLR)'}
+            </button>
+
+            {showZoneOverrides && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'var(--surface2)', padding: '12px', borderRadius: '8px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink)' }}>📍 Zone Specific Overrides</div>
+                
+                {/* Chennai */}
+                <div style={{ background: '#fff', padding: '10px', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--brand)', marginBottom: '6px' }}>Chennai Zone</div>
+                  <div className="fg c2">
+                    <input type="text" value={chnSn} onChange={e => setChnSn(e.target.value)} placeholder="Chennai SPOC Name" style={{ fontSize: '11.5px' }} />
+                    <input type="email" value={chnSm} onChange={e => setChnSm(e.target.value)} placeholder="Chennai SPOC Email" style={{ fontSize: '11.5px' }} />
+                    <input type="text" value={chnHod} onChange={e => setChnHod(e.target.value)} placeholder="Chennai HOD Name" style={{ fontSize: '11.5px' }} />
+                    <input type="email" value={chnHm} onChange={e => setChnHm(e.target.value)} placeholder="Chennai HOD Email" style={{ fontSize: '11.5px' }} />
+                  </div>
+                </div>
+
+                {/* Coimbatore */}
+                <div style={{ background: '#fff', padding: '10px', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--brand)', marginBottom: '6px' }}>Coimbatore Zone</div>
+                  <div className="fg c2">
+                    <input type="text" value={cbeSn} onChange={e => setCbeSn(e.target.value)} placeholder="CBE SPOC Name" style={{ fontSize: '11.5px' }} />
+                    <input type="email" value={cbeSm} onChange={e => setCbeSm(e.target.value)} placeholder="CBE SPOC Email" style={{ fontSize: '11.5px' }} />
+                    <input type="text" value={cbeHod} onChange={e => setCbeHod(e.target.value)} placeholder="CBE HOD Name" style={{ fontSize: '11.5px' }} />
+                    <input type="email" value={cbeHm} onChange={e => setCbeHm(e.target.value)} placeholder="CBE HOD Email" style={{ fontSize: '11.5px' }} />
+                  </div>
+                </div>
+
+                {/* Bangalore */}
+                <div style={{ background: '#fff', padding: '10px', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--brand)', marginBottom: '6px' }}>Bangalore Zone</div>
+                  <div className="fg c2">
+                    <input type="text" value={blrSn} onChange={e => setBlrSn(e.target.value)} placeholder="BLR SPOC Name" style={{ fontSize: '11.5px' }} />
+                    <input type="email" value={blrSm} onChange={e => setBlrSm(e.target.value)} placeholder="BLR SPOC Email" style={{ fontSize: '11.5px' }} />
+                    <input type="text" value={blrHod} onChange={e => setBlrHod(e.target.value)} placeholder="BLR HOD Name" style={{ fontSize: '11.5px' }} />
+                    <input type="email" value={blrHm} onChange={e => setBlrHm(e.target.value)} placeholder="BLR HOD Email" style={{ fontSize: '11.5px' }} />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="brow">

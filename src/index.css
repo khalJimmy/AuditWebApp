@@ -233,13 +233,15 @@
 .hdr {
   background: var(--hdr-bg);
   color: #fff;
-  height: 60px;
+  min-height: 60px;
   display: flex;
   align-items: center;
   padding: 0 28px;
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 1000;
+  width: 100%;
+  flex-shrink: 0;
   border-bottom: 1px solid rgba(255,255,255,.06);
   box-shadow: 0 1px 0 rgba(0,0,0,.2), 0 4px 20px rgba(0,0,0,.3);
 }
@@ -1038,7 +1040,7 @@ td {
 /* ─── DEPT TABLE ROW ──────────────────────────────────── */
 .drow {
   display: grid;
-  grid-template-columns: 58px 1fr 92px 78px 78px 52px 52px 52px 52px 110px 95px;
+  grid-template-columns: 60px 1fr 110px 65px 55px 55px 55px 55px 85px 85px;
   gap: 0;
   border-bottom: 1px solid var(--border);
   align-items: center;
@@ -1283,7 +1285,6 @@ td {
   .s5, .s4 { grid-template-columns: repeat(2, 1fr); }
   .c2, .c3, .c4 { grid-template-columns: 1fr; }
   .span2, .span3, .span4 { grid-column: span 1; }
-  .drow { grid-template-columns: 1fr 1fr; }
   .hdr { padding: 0 16px; }
   .content { padding: 18px 14px; }
 }
