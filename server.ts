@@ -13,6 +13,7 @@ import {
 } from './src/data/mockData';
 import { User, Department, AuditReport, AuditPlan, AuditTask, SystemSettings } from './src/types';
 import { renderAuditScheduledEmail, renderCapaClockTickingEmail } from './src/utils/emailTemplates';
+import { sendMail } from './src/utils/mailer';
 
 // In-memory Database state initialized with mock DB data
 let users: User[] = [...INITIAL_USERS];
@@ -450,7 +451,13 @@ async function startServer() {
           hodEmail: newPlan.hodMail,
           portalUrl: 'http://localhost:3000'
         });
-        console.log(`[FIREBASE SMTP DISPATCH] Queued schedule email for ${newPlan.planId} to ${newPlan.spocMail} and CC ${newPlan.hodMail}`);
+        sendMail({
+          to: newPlan.spocMail,
+          cc: newPlan.hodMail,
+          subject: `Audit Scheduled: ${newPlan.planId} — Action Required`,
+          html: emailHtml
+        }).then(r => console.log(`[SMTP DISPATCH] Plan email sent to ${newPlan.spocMail} (${r.messageId})`))
+          .catch(e => console.error('[SMTP ERROR] Plan dispatch:', e.message));
       }
 
       res.json({
@@ -552,7 +559,13 @@ async function startServer() {
         directTokenLink
       });
 
-      console.log(`[FIREBASE SMTP DISPATCH] Queued email for ${audit.auditId} to ${newTask.spocMail} and CC ${newTask.hodMail}`);
+      sendMail({
+          to: newTask.spocMail,
+          cc: newTask.hodMail,
+          subject: `CAPA Deadline: ${audit.auditId} — Response Required`,
+          html: emailHtml
+        }).then(r => console.log(`[SMTP DISPATCH] CAPA email sent to ${newTask.spocMail} (${r.messageId})`))
+          .catch(e => console.error('[SMTP ERROR] CAPA dispatch:', e.message));
 
       res.json({
         success: true,
@@ -633,15 +646,11 @@ async function startServer() {
     }
   });
 
-  // FIREBASE EMAIL SMTP DISPATCH & TEST ENDPOINT
-  app.post('/api/email/send-test', (req: Request, res: Response, next: NextFunction) => {
+  // BREVO SMTP DISPATCH & TEST ENDPOINT
+  app.post('/api/email/send-test', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { templateType, recipientEmail, hodEmail, data, html } = req.body;
-      const docId = `mail_trigger_${Date.now()}`;
-      
-      console.log(`[FIREBASE SMTP TRIGGER] Document queued in Firestore /mail/${docId}`);
-      console.log(`[FIREBASE SMTP RECIPIENTS] To: ${recipientEmail}, CC: ${hodEmail || 'N/A'}`);
-      console.log(`[FIREBASE SMTP TEMPLATE] ${templateType || 'CAPA SLA Urgency Alert'}`);
+      const subject = templateType || 'CAPA SLA Urgency Alert';
 
       // Track egress & writes metric in today's usage logs
       const todayStr = new Date().toISOString().split('T')[0];
@@ -650,18 +659,36 @@ async function startServer() {
         usageLogs[todayStr].egressMb += 0.12;
       }
 
+      if (!process.env.SMTP_PASS) {
+        res.status(500).json({
+          success: false,
+          status: 'SMTP_NOT_CONFIGURED',
+          error: 'SMTP credentials missing — set SMTP_PASS in .env'
+        });
+        return;
+      }
+
+      console.log(`[SMTP DISPATCH] Sending to ${recipientEmail} CC ${hodEmail || 'N/A'} (${subject})`);
+      const info = await sendMail({
+        to: recipientEmail,
+        cc: hodEmail,
+        subject,
+        html: html || data || 'Casagrand Process Audit — system notification.'
+      });
+
       res.json({
         success: true,
-        docId,
-        protocol: 'Firebase Email Trigger Extension (Firestore -> SMTP)',
-        queueCollection: '/mail',
-        status: 'QUEUED_SMTP',
+        protocol: 'Brevo SMTP (smtp-relay.brevo.com:587)',
+        status: 'SENT',
+        messageId: info.messageId,
+        accepted: info.accepted,
         recipientEmail,
         hodEmail,
         dispatchedAt: new Date().toISOString(),
-        templateType
+        templateType: subject
       });
     } catch (err) {
+      console.error('[SMTP ERROR]', err);
       next(err);
     }
   });

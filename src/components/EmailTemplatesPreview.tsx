@@ -85,12 +85,12 @@ export const EmailTemplatesPreview: React.FC<EmailTemplatesPreviewProps> = ({
 
       const data = await res.json();
       if (res.ok && data.success) {
-        onToast(`✉️ Firebase SMTP Email Queued! Trigger written to Firestore /mail/${data.docId}`);
+        onToast(`📨 Email Sent via Brevo SMTP! (${data.messageId || 'accepted by server'})`);
       } else {
-        onToast(`⚠️ SMTP Dispatch Simulation: ${data.error || 'Trigger queued successfully'}`);
+        onToast(`⚠️ SMTP Error: ${data.error || 'Email could not be sent'}`);
       }
     } catch (err: any) {
-      onToast(`✅ Firebase SMTP Trigger Queued! (Simulated Firestore /mail doc created)`);
+      onToast(`❌ SMTP Dispatch Failed: ${err.message || 'Send request failed'}`);
     } finally {
       setSendingTest(false);
     }
