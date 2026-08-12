@@ -18,8 +18,16 @@ if (connectionString) {
     
     pool = new Pool({
       connectionString,
+      max: 10,
+      idleTimeoutMillis: 10000,
+      connectionTimeoutMillis: 5000,
       ssl: (isProduction || isSupabase) ? { rejectUnauthorized: false } : undefined
     });
+
+    pool.on('error', (err) => {
+      console.error('[POSTGRESQL/SUPABASE POOL ERROR]', err.message);
+    });
+
     console.log('[POSTGRESQL/SUPABASE] Pool initialized with database connection string.');
   } catch (err) {
     console.warn('[POSTGRESQL/SUPABASE] Failed to initialize connection pool:', err);

@@ -10,10 +10,10 @@ import {
   INITIAL_AUDITS,
   INITIAL_TASKS,
   h6
-} from './src/data/mockData';
-import { User, Department, AuditReport, AuditPlan, AuditTask, SystemSettings } from './src/types';
-import { renderAuditScheduledEmail, renderCapaClockTickingEmail } from './src/utils/emailTemplates';
-import { initPostgresSchema } from './src/db/index';
+} from './src/data/mockData.js';
+import { User, Department, AuditReport, AuditPlan, AuditTask, SystemSettings } from './src/types.js';
+import { renderAuditScheduledEmail, renderCapaClockTickingEmail } from './src/utils/emailTemplates.js';
+import { initPostgresSchema } from './src/db/index.js';
 
 // In-memory Database state initialized with mock DB data
 let users: User[] = [...INITIAL_USERS];
@@ -93,6 +93,7 @@ function loadDbFromDisk() {
 
 function saveDbToDisk() {
   try {
+    if (process.env.VERCEL) return;
     const data = {
       users,
       departments: depts,
@@ -104,7 +105,7 @@ function saveDbToDisk() {
     };
     fs.writeFileSync(dbFilePath, JSON.stringify(data, null, 2), 'utf-8');
   } catch (err) {
-    console.error('[DB] Error writing to mockDb.json:', err);
+    console.warn('[DB] Skipping disk write (read-only environment):', err);
   }
 }
 
@@ -115,15 +116,28 @@ let nextAuditSeq = 2;
 let nextPlanSeq = 3;
 let nextTaskSeq = 2;
 
-async function startServer() {
-  await initPostgresSchema();
-  const app = express();
-  const PORT = 3000;
+// Initialize Postgres Schema asynchronously
+initPostgresSchema().catch(err => console.error('[POSTGRES INIT ERROR]', err));
 
-  app.use(express.json({ limit: '10mb' }));
+const app = express();
+const PORT = 3000;
 
-  // Request logger & Spark Usage Tracker middleware
-  app.use((req: Request, _res: Response, next: NextFunction) => {
+// CORS headers middleware
+app.use((req: Request, res: Response, next: NextFunction) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+    return;
+  }
+  next();
+});
+
+app.use(express.json({ limit: '10mb' }));
+
+// Request logger & Spark Usage Tracker middleware
+app.use((req: Request, _res: Response, next: NextFunction) => {
     if (req.path.startsWith('/api')) {
       console.log(`[API] ${req.method} ${req.path}`);
       
@@ -785,16 +799,19 @@ async function startServer() {
     });
   });
 
-  // --------------------------------------------------------------------------
-  // VITE / STATIC MIDDLEWARE
-  // --------------------------------------------------------------------------
+export default app;
+
+// --------------------------------------------------------------------------
+// VITE / LOCAL DEV SERVER INITIALIZATION
+// --------------------------------------------------------------------------
+async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa'
     });
     app.use(vite.middlewares);
-  } else {
+  } else if (!process.env.VERCEL) {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (_req: Request, res: Response) => {
@@ -802,9 +819,14 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Casagrand Process Audit App running on http://localhost:${PORT}`);
-  });
+  if (!process.env.VERCEL) {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Casagrand Process Audit App running on http://localhost:${PORT}`);
+    });
+  }
 }
 
-startServer();
+if (!process.env.VERCEL) {
+  startServer();
+}
+
