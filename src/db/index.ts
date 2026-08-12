@@ -1,24 +1,32 @@
 import pkg from 'pg';
 const { Pool } = pkg;
 
-// Standard PostgreSQL connection pool configuration
-const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.PGURI;
+// Standard PostgreSQL & Supabase connection pool configuration
+const connectionString = 
+  process.env.DATABASE_URL || 
+  process.env.POSTGRES_URL || 
+  process.env.SUPABASE_DATABASE_URL || 
+  process.env.SUPABASE_DB_URL || 
+  process.env.PGURI;
 
 let pool: pkg.Pool | null = null;
 
 if (connectionString) {
   try {
+    const isSupabase = connectionString.includes('supabase.co') || connectionString.includes('supabase.com');
+    const isProduction = process.env.NODE_ENV === 'production';
+    
     pool = new Pool({
       connectionString,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined
+      ssl: (isProduction || isSupabase) ? { rejectUnauthorized: false } : undefined
     });
-    console.log('[POSTGRESQL] Pool initialized with DATABASE_URL connection string.');
+    console.log('[POSTGRESQL/SUPABASE] Pool initialized with database connection string.');
   } catch (err) {
-    console.warn('[POSTGRESQL] Failed to initialize connection pool:', err);
+    console.warn('[POSTGRESQL/SUPABASE] Failed to initialize connection pool:', err);
     pool = null;
   }
 } else {
-  console.log('[POSTGRESQL] No DATABASE_URL provided. Running with in-memory state & automatic fallback.');
+  console.log('[POSTGRESQL/SUPABASE] No DATABASE_URL provided. Running with in-memory state & automatic fallback.');
 }
 
 export const db = {
