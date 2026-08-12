@@ -158,7 +158,7 @@ export const renderAuditScheduledEmail = (data: AuditScheduleEmailData): string 
                 Casagrand Process &amp; Quality Audit Management System
               </p>
               <p style="margin:0;">
-                Automated Notification via Firebase SMTP Protocol · Do Not Reply Directly
+                Automated Notification via Direct SMTP Relay Protocol · Do Not Reply Directly
               </p>
             </td>
           </tr>
@@ -308,7 +308,7 @@ export const renderCapaClockTickingEmail = (data: CapaClockTickingEmailData): st
                 Casagrand Process Audit &amp; Quality Control Systems
               </p>
               <p style="margin:0; color:#64748b;">
-                Firebase Email SMTP Trigger Protocol · Automated SLA Clock Tracker
+                PostgreSQL Email Dispatch Queue · Automated SLA Clock Tracker
               </p>
             </td>
           </tr>

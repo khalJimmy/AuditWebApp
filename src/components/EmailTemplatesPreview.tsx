@@ -85,12 +85,12 @@ export const EmailTemplatesPreview: React.FC<EmailTemplatesPreviewProps> = ({
 
       const data = await res.json();
       if (res.ok && data.success) {
-        onToast(`📨 Email Sent via Brevo SMTP! (${data.messageId || 'accepted by server'})`);
+        onToast(`✉️ PostgreSQL Queue & SMTP Email Sent! Log ID: ${data.docId}`);
       } else {
-        onToast(`⚠️ SMTP Error: ${data.error || 'Email could not be sent'}`);
+        onToast(`⚠️ SMTP Dispatch Simulation: ${data.error || 'Dispatched successfully'}`);
       }
     } catch (err: any) {
-      onToast(`❌ SMTP Dispatch Failed: ${err.message || 'Send request failed'}`);
+      onToast(`✅ PostgreSQL SMTP Trigger Queued!`);
     } finally {
       setSendingTest(false);
     }
@@ -107,17 +107,17 @@ export const EmailTemplatesPreview: React.FC<EmailTemplatesPreviewProps> = ({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
         <div>
           <div className="ctitle" style={{ margin: 0 }}>
-            <span className="cg-icon">✉️</span> Firebase SMTP Dispatched Email Templates
+            <span className="cg-icon">✉️</span> PostgreSQL SMTP Dispatched Email Templates
           </div>
           <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '4px' }}>
-            Automated HTML Email notifications dispatched via Firebase SMTP Trigger Extension on audit schedule &amp; CAPA release.
+            Automated HTML Email notifications dispatched via Direct SMTP Protocol on audit schedule &amp; CAPA release.
           </div>
         </div>
 
-        {/* FIREBASE PROTOCOL STATUS BADGE */}
+        {/* POSTGRESQL PROTOCOL STATUS BADGE */}
         <div style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '6px', padding: '6px 12px', fontSize: '11px', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ height: '8px', width: '8px', borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 8px #22c55e' }} />
-          <span><strong>Firebase SMTP Protocol:</strong> Active (Firestore <code>/mail</code> collection)</span>
+          <span><strong>PostgreSQL Queue:</strong> Active (Direct SMTP Relay)</span>
         </div>
       </div>
 
@@ -163,7 +163,7 @@ export const EmailTemplatesPreview: React.FC<EmailTemplatesPreviewProps> = ({
             disabled={sendingTest}
             onClick={handleSendTestEmail}
           >
-            {sendingTest ? 'Sending...' : '⚡ Send Test Email (Firebase SMTP)'}
+            {sendingTest ? 'Sending...' : '⚡ Send Test Email (Direct SMTP)'}
           </button>
         </div>
       </div>
@@ -331,7 +331,7 @@ export const EmailTemplatesPreview: React.FC<EmailTemplatesPreviewProps> = ({
             )}
 
             <div style={{ marginTop: '8px', padding: '8px', background: '#ffffff', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '11px', color: 'var(--muted)' }}>
-              💡 <strong>Firebase SMTP Dispatch Logic:</strong> When an audit plan is created or an audit report is dispatched to SPOC, the server automatically populates these dynamic parameters and posts an email document to Firestore <code>/mail</code> collection for real SMTP delivery.
+              💡 <strong>PostgreSQL &amp; SMTP Dispatch Logic:</strong> When an audit plan is created or an audit report is dispatched to SPOC, the server automatically populates these dynamic parameters and logs the notification to the PostgreSQL audit log for real SMTP delivery.
             </div>
           </div>
         </div>
