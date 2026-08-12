@@ -1,4 +1,4 @@
-import { User } from '../types';
+import { User } from '../types.js';
 
 export function h6(str: string): string {
   let h = 5381;

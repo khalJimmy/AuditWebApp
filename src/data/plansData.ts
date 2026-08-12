@@ -1,4 +1,4 @@
-import { AuditPlan } from '../types';
+import { AuditPlan } from '../types.js';
 
 const todayStr = new Date().toISOString().split('T')[0];
 const nextWeekDate = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];

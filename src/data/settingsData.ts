@@ -1,4 +1,4 @@
-import { SystemSettings } from '../types';
+import { SystemSettings } from '../types.js';
 
 export const INITIAL_SETTINGS: SystemSettings = {
   tatHours: 72,

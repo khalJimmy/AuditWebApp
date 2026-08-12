@@ -1,4 +1,4 @@
-import { AuditReport, AuditTask } from '../types';
+import { AuditReport, AuditTask } from '../types.js';
 
 const todayStr = new Date().toISOString().split('T')[0];
 const due72h = new Date(Date.now() + 72 * 3600 * 1000).toISOString();

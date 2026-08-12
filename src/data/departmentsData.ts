@@ -1,6 +1,6 @@
-import { Department, ZoneName } from '../types';
-import { DepartmentModel } from '../models/DepartmentModel';
-import { DepartmentCatalog } from '../models/DepartmentCatalog';
+import { Department, ZoneName } from '../types.js';
+import { DepartmentModel } from '../models/DepartmentModel.js';
+import { DepartmentCatalog } from '../models/DepartmentCatalog.js';
 
 export const INITIAL_DEPTS: DepartmentModel[] = DepartmentModel.fromList([
   { 

@@ -1,5 +1,5 @@
-import { DepartmentModel } from './DepartmentModel';
-import { Department, ZoneName } from '../types';
+import { DepartmentModel } from './DepartmentModel.js';
+import { Department, ZoneName } from '../types.js';
 
 export class DepartmentCatalog {
   private byRefMap: Map<string, DepartmentModel>;

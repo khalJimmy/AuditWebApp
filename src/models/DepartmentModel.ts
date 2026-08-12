@@ -1,4 +1,4 @@
-import { Department, ZoneName, ZoneContact } from '../types';
+import { Department, ZoneName, ZoneContact } from '../types.js';
 
 export class DepartmentModel implements Department {
   ref: string;
