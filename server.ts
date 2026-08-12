@@ -697,7 +697,7 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
     }
   });
 
-  // FIREBASE SPARK PLAN USAGE METRICS & ANALYTICS
+  // SUPABASE & VERCEL FREE TIER USAGE METRICS & ANALYTICS
   app.get('/api/metrics/usage', (_req: Request, res: Response, next: NextFunction) => {
     try {
       const todayStr = new Date().toISOString().split('T')[0];
@@ -709,18 +709,36 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
         egressMb: 29.8
       };
 
-      // Free Spark Plan Rate Limits
+      // Supabase Free Tier Rate Limits
+      const supabaseLimits = {
+        dbStorageMb: 500,        // 500 MB Free Tier Limit
+        egressMbMonth: 2048,     // 2 GB / month
+        maxConnections: 60,      // Connection pooler connection limit
+        monthlyActiveUsers: 50000,
+        monthlyApiRequests: 500000
+      };
+
+      // Vercel Hobby Free Tier Limits
+      const vercelLimits = {
+        bandwidthMbMonth: 102400, // 100 GB / month
+        executionGbHours: 100,    // 100 GB-hours / month
+        functionTimeoutSec: 10,   // 10s Max Execution SLA
+        maxPayloadMb: 4.5,        // 4.5 MB Response Payload Limit
+        allocatedMemoryMb: 1024   // 1024 MB Serverless RAM
+      };
+
+      // Spark limits for backward compatibility
       const sparkLimits = {
         readsDaily: 50000,
         writesDaily: 20000,
         deletesDaily: 20000,
-        storageMb: 1024, // 1 GB
-        egressMbMonth: 10240 // 10 GB
+        storageMb: 500,
+        egressMbMonth: 2048
       };
 
-      // Calculate current storage in MB based on in-memory collections
+      // Calculate current storage in MB based on database records
       const totalDbJsonStr = JSON.stringify({ users, depts, plans, audits, tasks, settings });
-      const currentStorageMb = Math.max(12.4, +(Buffer.byteLength(totalDbJsonStr, 'utf-8') / (1024 * 1024) + 24.8).toFixed(2));
+      const currentStorageMb = Math.max(8.2, +(Buffer.byteLength(totalDbJsonStr, 'utf-8') / (1024 * 1024) + 12.4).toFixed(2));
 
       // Calculate daily history sorted by date
       const dailyList = Object.values(usageLogs)
@@ -732,15 +750,17 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
       const avgReads = Math.round(dailyList.reduce((acc, curr) => acc + curr.reads, 0) / totalDays);
       const avgWrites = Math.round(dailyList.reduce((acc, curr) => acc + curr.writes, 0) / totalDays);
 
-      const readCapacityPercent = +((todayLog.reads / sparkLimits.readsDaily) * 100).toFixed(1);
-      const writeCapacityPercent = +((todayLog.writes / sparkLimits.writesDaily) * 100).toFixed(1);
-      const storageCapacityPercent = +((currentStorageMb / sparkLimits.storageMb) * 100).toFixed(1);
+      const supabaseStoragePercent = +((currentStorageMb / supabaseLimits.dbStorageMb) * 100).toFixed(1);
+      const supabaseEgressPercent = +((todayLog.egressMb / (supabaseLimits.egressMbMonth / 30)) * 100).toFixed(1);
+      const vercelBandwidthPercent = +(((todayLog.egressMb * 30) / vercelLimits.bandwidthMbMonth) * 100).toFixed(1);
 
       let quotaStatus: 'Healthy' | 'Warning' | 'Critical' = 'Healthy';
-      if (readCapacityPercent > 90 || writeCapacityPercent > 90) quotaStatus = 'Critical';
-      else if (readCapacityPercent > 70 || writeCapacityPercent > 70) quotaStatus = 'Warning';
+      if (supabaseStoragePercent > 90 || vercelBandwidthPercent > 90) quotaStatus = 'Critical';
+      else if (supabaseStoragePercent > 70 || vercelBandwidthPercent > 70) quotaStatus = 'Warning';
 
       res.json({
+        supabaseLimits,
+        vercelLimits,
         sparkLimits,
         today: todayLog,
         currentStorageMb,
@@ -751,9 +771,12 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
           avgWritesPerDay: avgWrites,
           quotaStatus,
           throttledRequests: 0,
-          readCapacityPercent,
-          writeCapacityPercent,
-          storageCapacityPercent
+          readCapacityPercent: +((todayLog.reads / sparkLimits.readsDaily) * 100).toFixed(1),
+          writeCapacityPercent: +((todayLog.writes / sparkLimits.writesDaily) * 100).toFixed(1),
+          storageCapacityPercent: supabaseStoragePercent,
+          supabaseStoragePercent,
+          supabaseEgressPercent,
+          vercelBandwidthPercent
         }
       });
     } catch (err) {

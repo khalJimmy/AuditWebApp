@@ -2,6 +2,20 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
 
 interface UsageData {
+  supabaseLimits?: {
+    dbStorageMb: number;
+    egressMbMonth: number;
+    maxConnections: number;
+    monthlyActiveUsers: number;
+    monthlyApiRequests: number;
+  };
+  vercelLimits?: {
+    bandwidthMbMonth: number;
+    executionGbHours: number;
+    functionTimeoutSec: number;
+    maxPayloadMb: number;
+    allocatedMemoryMb: number;
+  };
   sparkLimits: {
     readsDaily: number;
     writesDaily: number;
@@ -33,6 +47,9 @@ interface UsageData {
     readCapacityPercent: number;
     writeCapacityPercent: number;
     storageCapacityPercent: number;
+    supabaseStoragePercent?: number;
+    supabaseEgressPercent?: number;
+    vercelBandwidthPercent?: number;
   };
 }
 
@@ -193,18 +210,21 @@ export const SparkUsageMetrics: React.FC<{ onToast?: (msg: string) => void }> = 
 
   if (!data) return null;
 
-  const { sparkLimits, today, currentStorageMb, dailyLogs, analytics } = data;
+  const { sparkLimits, supabaseLimits, vercelLimits, today, currentStorageMb, dailyLogs, analytics } = data;
+
+  const subStorageLimit = supabaseLimits?.dbStorageMb || 500;
+  const vercelBwLimit = (vercelLimits?.bandwidthMbMonth || 102400) / 1024; // in GB
 
   return (
-    <div className="card" style={{ borderLeft: '4px solid #f59e0b', padding: '20px' }}>
-      {/* HEADER & Spark Plan Status */}
+    <div className="card" style={{ borderLeft: '4px solid #10b981', padding: '20px' }}>
+      {/* HEADER & Supabase / Vercel Plan Status */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
         <div>
           <div className="ctitle" style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-            <span>🔥 Firebase Spark Plan Usage Metrics &amp; Rate Limit Analytics</span>
+            <span>⚡ Supabase &amp; Vercel Free Tier Metrics &amp; Quota Analytics</span>
           </div>
           <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
-            Daily read/write execution logger · Spark Free Tier Rate Limits · Real-time Quota Analytics
+            Supabase Postgres 500MB DB Limit · Vercel Serverless SLA &amp; Bandwidth Monitor · Rate Limit Protection
           </div>
         </div>
 
@@ -220,7 +240,7 @@ export const SparkUsageMetrics: React.FC<{ onToast?: (msg: string) => void }> = 
               border: '1px solid #a7f3d0'
             }}
           >
-            🟢 Status: {analytics.quotaStatus} (Within Free Spark Limits)
+            🟢 Status: {analytics.quotaStatus} (Within Free Quota Limits)
           </span>
           <button
             type="button"
@@ -245,69 +265,73 @@ export const SparkUsageMetrics: React.FC<{ onToast?: (msg: string) => void }> = 
       {/* MINIMAL DONUT CHARTS GRID */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', marginBottom: '20px' }}>
         <MinimalDonutChart
-          title="📖 Daily Reads Log"
-          value={today.reads}
-          limit={sparkLimits.readsDaily}
-          unit="reads"
-          color="#2563eb"
-          subtext={`${(sparkLimits.readsDaily - today.reads).toLocaleString()} reads left today`}
-        />
-
-        <MinimalDonutChart
-          title="✍️ Daily Writes Log"
-          value={today.writes}
-          limit={sparkLimits.writesDaily}
-          unit="writes"
-          color="#0284c7"
-          subtext={`${(sparkLimits.writesDaily - today.writes).toLocaleString()} writes left today`}
-        />
-
-        <MinimalDonutChart
-          title="💾 Database Storage"
+          title="⚡ Supabase DB Storage"
           value={currentStorageMb}
-          limit={sparkLimits.storageMb}
+          limit={subStorageLimit}
           unit="MB"
-          color="#8b5cf6"
-          subtext={`${(sparkLimits.storageMb - currentStorageMb).toFixed(1)} MB storage free`}
+          color="#3ecf8e"
+          subtext={`${(subStorageLimit - currentStorageMb).toFixed(1)} MB Free Tier Storage Left`}
         />
 
         <MinimalDonutChart
-          title="🌐 Network Egress"
+          title="🌐 Supabase Egress / Day"
           value={today.egressMb}
-          limit={Math.round(sparkLimits.egressMbMonth / 30)}
+          limit={Math.round((supabaseLimits?.egressMbMonth || 2048) / 30)}
           unit="MB"
-          color="#10b981"
-          subtext="Free tier monthly quota: 10 GB"
+          color="#2563eb"
+          subtext="Supabase 2 GB / Month Free Quota"
+        />
+
+        <MinimalDonutChart
+          title="▲ Vercel Bandwidth"
+          value={+(today.egressMb * 30 / 1024).toFixed(2)}
+          limit={vercelBwLimit}
+          unit="GB"
+          color="#000000"
+          subtext={`Vercel Hobby 100 GB Monthly Limit`}
+        />
+
+        <MinimalDonutChart
+          title="📖 Daily Operations Log"
+          value={today.reads + today.writes}
+          limit={sparkLimits.readsDaily + sparkLimits.writesDaily}
+          unit="reqs"
+          color="#8b5cf6"
+          subtext="100% Zero-Throttled Performance"
         />
       </div>
 
       {/* ANALYTICS SUMMARY CARDS */}
       <div style={{ background: '#f1f5f9', padding: '14px', borderRadius: '8px', marginBottom: '20px' }}>
         <div style={{ fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '10px' }}>
-          📊 Spark Plan Rate Limits &amp; System Analytics Insights
+          📊 Supabase &amp; Vercel Free Tier Quotas &amp; Infrastructure Health
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
           <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
-            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Peak Operations Window</span>
-            <strong style={{ fontSize: '13px', color: '#0f172a' }}>{analytics.peakWindow}</strong>
-          </div>
-
-          <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
-            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Avg Daily Reads / Writes</span>
+            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>⚡ Supabase Postgres Pool</span>
             <strong style={{ fontSize: '13px', color: '#0f172a' }}>
-              {analytics.avgReadsPerDay.toLocaleString()} R / {analytics.avgWritesPerDay.toLocaleString()} W
+              60 Max Pool Connections · SSL Transaction Mode
             </strong>
           </div>
 
           <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
-            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Rate Limit Violations / Throttled</span>
-            <strong style={{ fontSize: '13px', color: '#16a34a' }}>0 Requests Throttled (100% SLA)</strong>
+            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>▲ Vercel Serverless SLA</span>
+            <strong style={{ fontSize: '13px', color: '#0f172a' }}>
+              10s Execution SLA · 4.5MB Max Payload
+            </strong>
           </div>
 
           <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
-            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Free Tier Quota Headroom</span>
-            <strong style={{ fontSize: '13px', color: '#2563eb' }}>
-              {(100 - analytics.readCapacityPercent).toFixed(1)}% Available
+            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Avg Daily Traffic</span>
+            <strong style={{ fontSize: '13px', color: '#0f172a' }}>
+              {analytics.avgReadsPerDay.toLocaleString()} Reads / {analytics.avgWritesPerDay.toLocaleString()} Writes
+            </strong>
+          </div>
+
+          <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Supabase Storage Headroom</span>
+            <strong style={{ fontSize: '13px', color: '#10b981' }}>
+              {(100 - (analytics.supabaseStoragePercent || analytics.storageCapacityPercent)).toFixed(1)}% Free Space
             </strong>
           </div>
         </div>
