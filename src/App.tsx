@@ -31,7 +31,7 @@ import {
 import { PlanItem } from './types';
 
 export function App() {
-  const { user, login, logout } = useAuth();
+  const { user, loading, login, logout } = useAuth();
   const auditData = useAuditData(user);
 
   // Check URL query parameters for direct SPOC token link (e.g. ?token=cg-spoc-...)
@@ -86,6 +86,71 @@ export function App() {
           window.history.replaceState({}, document.title, window.location.pathname);
         }}
       />
+    );
+  }
+
+  // Handle Initial Supabase Session Loading State
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#0f172a',
+        color: '#f8fafc',
+        fontFamily: 'system-ui, -apple-system, sans-serif'
+      }}>
+        <div style={{
+          width: '54px',
+          height: '54px',
+          borderRadius: '12px',
+          background: 'linear-gradient(135deg, #e11d48, #be123c)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: '20px',
+          boxShadow: '0 10px 25px -5px rgba(225, 29, 72, 0.4)'
+        }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+            <path d="M3 9.5L12 3L21 9.5V21H15V15H9V21H3V9.5Z" fill="#ffffff" />
+          </svg>
+        </div>
+        <div style={{ fontSize: '18px', fontWeight: '700', letterSpacing: '0.5px', marginBottom: '6px' }}>
+          CASAGRAND
+        </div>
+        <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '24px' }}>
+          Process Audit &amp; Quality Workflow
+        </div>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          background: 'rgba(255, 255, 255, 0.05)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          padding: '8px 16px',
+          borderRadius: '20px',
+          fontSize: '12px',
+          color: '#cbd5e1'
+        }}>
+          <span style={{
+            display: 'inline-block',
+            width: '12px',
+            height: '12px',
+            border: '2px solid #e11d48',
+            borderTopColor: 'transparent',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite'
+          }} />
+          Connecting to Supabase Session...
+        </div>
+        <style>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
     );
   }
 

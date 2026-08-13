@@ -1,5 +1,6 @@
 import { User, Department, AuditReport, PlanItem, AuditTask, Settings } from '../types';
 import { DepartmentModel } from '../models/DepartmentModel';
+import { supabase } from '../lib/supabase';
 
 export class ApiError extends Error {
   status: number;
@@ -10,8 +11,38 @@ export class ApiError extends Error {
   }
 }
 
+let cachedAuthToken: string | null = null;
+
+export function setApiAuthToken(token: string | null) {
+  cachedAuthToken = token;
+}
+
+async function getAccessToken(): Promise<string | null> {
+  if (cachedAuthToken) return cachedAuthToken;
+
+  try {
+    const { data } = await supabase.auth.getSession();
+    if (data?.session?.access_token) {
+      cachedAuthToken = data.session.access_token;
+      return cachedAuthToken;
+    }
+  } catch {
+    // Ignore error during serverless or early startup
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const legacyToken = localStorage.getItem('cpa_token');
+      if (legacyToken) return legacyToken;
+    } catch {
+      // Storage access blocked or restricted
+    }
+  }
+  return null;
+}
+
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const token = localStorage.getItem('cpa_token');
+  const token = await getAccessToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> || {})

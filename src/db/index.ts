@@ -9,6 +9,12 @@ const connectionString =
   process.env.SUPABASE_DB_URL || 
   process.env.PGURI;
 
+const pgHost = process.env.PGHOST || process.env.SUPABASE_HOST;
+const pgPort = parseInt(process.env.PGPORT || process.env.SUPABASE_PORT || '5432', 10);
+const pgUser = process.env.PGUSER || process.env.SUPABASE_USER || 'postgres';
+const pgPassword = process.env.PGPASSWORD || process.env.SUPABASE_PASSWORD;
+const pgDatabase = process.env.PGDATABASE || process.env.SUPABASE_DATABASE || 'postgres';
+
 let pool: pkg.Pool | null = null;
 
 if (connectionString) {
@@ -33,8 +39,32 @@ if (connectionString) {
     console.warn('[POSTGRESQL/SUPABASE] Failed to initialize connection pool:', err);
     pool = null;
   }
+} else if (pgHost && pgPassword) {
+  try {
+    const isSupabase = pgHost.includes('supabase.co') || pgHost.includes('supabase.com');
+    pool = new Pool({
+      host: pgHost,
+      port: pgPort,
+      user: pgUser,
+      password: pgPassword,
+      database: pgDatabase,
+      max: 10,
+      idleTimeoutMillis: 10000,
+      connectionTimeoutMillis: 5000,
+      ssl: (process.env.NODE_ENV === 'production' || isSupabase) ? { rejectUnauthorized: false } : undefined
+    });
+
+    pool.on('error', (err) => {
+      console.error('[POSTGRESQL/SUPABASE POOL ERROR]', err.message);
+    });
+
+    console.log(`[POSTGRESQL/SUPABASE] Pool initialized with direct host: ${pgHost}:${pgPort}/${pgDatabase}`);
+  } catch (err) {
+    console.warn('[POSTGRESQL/SUPABASE] Failed to initialize direct connection pool:', err);
+    pool = null;
+  }
 } else {
-  console.log('[POSTGRESQL/SUPABASE] No DATABASE_URL provided. Running with in-memory state & automatic fallback.');
+  console.log('[POSTGRESQL/SUPABASE] No DATABASE_URL or PGHOST provided. Running with in-memory state & automatic fallback.');
 }
 
 export const db = {
