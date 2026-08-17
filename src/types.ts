@@ -169,6 +169,29 @@ export interface ZoneAuditors {
   Bangalore: string[];
 }
 
+export interface SmtpServerConfig {
+  id: string;
+  name: string;
+  provider: 'gmail' | 'office365' | 'custom';
+  host: string;
+  port: number;
+  secure: boolean;
+  user: string;
+  pass: string;
+  fromName: string;
+  fromEmail: string;
+  isDefault?: boolean;
+  lastTestedAt?: string;
+  status?: 'verified' | 'failed' | 'untested';
+}
+
+export interface EmailAttachment {
+  filename: string;
+  content: string;
+  encoding?: 'base64' | 'utf-8';
+  contentType?: string;
+}
+
 export interface Settings {
   tatHours: number;
   defaultYear: string;
@@ -178,6 +201,8 @@ export interface Settings {
   auditors?: ZoneAuditors;
   params?: { id: string; title: string; max: number }[];
   senderEmail?: string;
+  smtpServers?: SmtpServerConfig[];
+  activeSmtpServerId?: string;
 }
 
 export type SystemSettings = Settings;

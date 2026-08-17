@@ -1,8 +1,21 @@
 import React, { useState } from 'react';
-import { AuditReport, AuditTask, AuditPlan, Department } from '../types';
+import { AuditReport, AuditTask, AuditPlan, Department, User } from '../types';
 import * as XLSX from 'xlsx';
+import {
+  Download,
+  MapPin,
+  Building2,
+  UserCheck,
+  Bell,
+  Calendar,
+  AlertTriangle,
+  CheckCircle2,
+  ShieldCheck,
+  Clock
+} from 'lucide-react';
 
 interface DashboardViewProps {
+  currentUser?: User | null;
   audits: AuditReport[];
   tasks: AuditTask[];
   plans: AuditPlan[];
@@ -11,7 +24,8 @@ interface DashboardViewProps {
   onSelectTab?: (tab: string) => void;
 }
 
-export const DashboardView: React.FC<DashboardViewProps> = ({ audits, tasks, plans, depts, onToast, onSelectTab }) => {
+export const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, audits, tasks, plans, depts, onToast, onSelectTab }) => {
+  const isAdmin = currentUser?.role === 'admin';
   const [zoneFilter, setZoneFilter] = useState<string>('');
   const [monthFilter, setMonthFilter] = useState<string>('');
 
@@ -68,7 +82,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ audits, tasks, pla
     const ws = XLSX.utils.aoa_to_sheet([summaryHeaders, ...summaryRows]);
     XLSX.utils.book_append_sheet(wb, ws, 'Audit Summary');
     XLSX.writeFile(wb, `Casagrand_ProcessAudit_${new Date().toISOString().split('T')[0]}.xlsx`);
-    onToast?.('✅ Exported dashboard summary to Excel');
+    onToast?.('Exported dashboard summary to Excel');
   };
 
   const overdueTasksList = relevantTasks.filter(isOverdue);
@@ -176,8 +190,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ audits, tasks, pla
             ))}
           </select>
 
-          <button className="btn btn-o btn-sm" onClick={exportAll}>
-            ⬇ Export
+          <button className="btn btn-o btn-sm" onClick={exportAll} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <Download size={13} />
+            <span>Export</span>
           </button>
         </div>
       </div>
@@ -205,30 +220,38 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ audits, tasks, pla
         </div>
       </div>
 
-      {/* SECTION TOGGLE BUTTONS */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
-        <button
-          className={`btn btn-xs ${dashSection === 'depts' ? 'btn-g' : 'btn-o'}`}
-          onClick={() => setDashSection('depts')}
-        >
-          🏢 Department Compliance Rankings
-        </button>
-        <button
-          className={`btn btn-xs ${dashSection === 'auditors' ? 'btn-g' : 'btn-o'}`}
-          onClick={() => setDashSection('auditors')}
-        >
-          👨‍💼 Auditor Performance Metrics
-        </button>
-        <button
-          className={`btn btn-xs ${dashSection === 'spocs' ? 'btn-g' : 'btn-o'}`}
-          onClick={() => setDashSection('spocs')}
-        >
-          🏢 Department SLA Metrics
-        </button>
-      </div>
+      {/* SECTION TOGGLE BUTTONS - Visible only for Admin */}
+      {isAdmin && (
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+          <button
+            className={`btn btn-xs ${dashSection === 'depts' ? 'btn-g' : 'btn-o'}`}
+            onClick={() => setDashSection('depts')}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+          >
+            <Building2 size={12} />
+            <span>Department Compliance Rankings</span>
+          </button>
+          <button
+            className={`btn btn-xs ${dashSection === 'auditors' ? 'btn-g' : 'btn-o'}`}
+            onClick={() => setDashSection('auditors')}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+          >
+            <UserCheck size={12} />
+            <span>Auditor Performance Metrics</span>
+          </button>
+          <button
+            className={`btn btn-xs ${dashSection === 'spocs' ? 'btn-g' : 'btn-o'}`}
+            onClick={() => setDashSection('spocs')}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+          >
+            <Clock size={12} />
+            <span>Department SLA Metrics</span>
+          </button>
+        </div>
+      )}
 
-      {/* Zone Breakdown Cards */}
-      {dashSection === 'depts' && (
+      {/* Zone Breakdown Cards (Shown when depts is selected or for non-admin default) */}
+      {(dashSection === 'depts' || !isAdmin) && (
         <div id="zone-wrap">
           {(zoneFilter ? zones.filter(z => z.name === zoneFilter) : zones).map(zone => {
             const zoneAudits = filteredAudits.filter(a => a.zone === zone.name);
@@ -243,7 +266,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ audits, tasks, pla
             return (
               <div key={zone.name} className="zone-card">
                 <div className={`zone-hdr ${zone.cls}`}>
-                  <div className="zn">📍 {zone.name} Zone</div>
+                  <div className="zn" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    <MapPin size={13} />
+                    <span>{zone.name} Zone</span>
+                  </div>
                   <div className="zs">
                     <div className="zsi">
                       <div className="zsn">{zoneAudits.length}</div>
@@ -335,9 +361,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ audits, tasks, pla
         </div>
       )}
 
-      {dashSection === 'auditors' && (
+      {isAdmin && dashSection === 'auditors' && (
         <div className="card" style={{ marginBottom: '18px' }}>
-          <div className="ctitle">👨‍💼 Auditor Performance Metrics</div>
+          <div className="ctitle" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <UserCheck size={15} style={{ color: 'var(--brand)' }} />
+            <span>Auditor Performance Metrics</span>
+          </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
               <thead>
@@ -378,9 +407,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ audits, tasks, pla
         </div>
       )}
 
-      {dashSection === 'spocs' && (
+      {isAdmin && dashSection === 'spocs' && (
         <div className="card" style={{ marginBottom: '18px' }}>
-          <div className="ctitle">🏢 Department SLA Resolution Performance</div>
+          <div className="ctitle" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Building2 size={15} style={{ color: 'var(--brand)' }} />
+            <span>Department SLA Resolution Performance</span>
+          </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
               <thead>
@@ -426,11 +458,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ audits, tasks, pla
 
       <div className="fg c2" style={{ gap: '13px' }}>
         <div className="card">
-          <div className="ctitle">🔔 TAT Alerts</div>
+          <div className="ctitle" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Bell size={15} style={{ color: 'var(--brand)' }} />
+            <span>TAT Alerts</span>
+          </div>
           <div id="dash-alerts">
             {overdueTasksList.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '16px', color: 'var(--muted)', fontSize: '12.5px' }}>
-                No overdue tasks ✓
+                No overdue tasks
               </div>
             ) : (
               overdueTasksList.map(t => (
@@ -444,8 +479,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ audits, tasks, pla
                     borderBottom: '1px solid var(--border)'
                   }}
                 >
-                  <div>
-                    <span className="tat tover">⚠ OVERDUE</span> <strong>{t.fn}</strong>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span className="tat tover" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                      <AlertTriangle size={10} /> OVERDUE
+                    </span>
+                    <strong>{t.fn}</strong>
                   </div>
                   <div style={{ fontSize: '11px', color: 'var(--muted)' }}>
                     Due: {new Date(t.dueAt).toLocaleString()}
@@ -457,7 +495,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ audits, tasks, pla
         </div>
 
         <div className="card">
-          <div className="ctitle">📅 Recent Planner Activity</div>
+          <div className="ctitle" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Calendar size={15} style={{ color: 'var(--brand)' }} />
+            <span>Recent Planner Activity</span>
+          </div>
           <div id="dash-plans">
             {recentPlans.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '16px', color: 'var(--muted)', fontSize: '12.5px' }}>

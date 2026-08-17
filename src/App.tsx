@@ -171,6 +171,7 @@ export function App() {
       <main style={{ flex: 1 }}>
         {activeTab === 'dash' && (
           <DashboardView
+            currentUser={user}
             audits={auditData.audits}
             tasks={auditData.tasks}
             plans={auditData.plans}
@@ -337,6 +338,7 @@ export function App() {
           auditId={dispatchAuditId}
           audit={auditData.audits.find(a => a.auditId === dispatchAuditId)!}
           depts={auditData.depts}
+          settings={auditData.settings}
           onClose={() => setDispatchAuditId(null)}
           onDispatch={auditData.dispatchTask}
         />

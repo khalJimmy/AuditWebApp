@@ -40,20 +40,46 @@ export function useAuditData(currentUser: User | null) {
     setLoading(true);
     setError(null);
     try {
+      const isAdmin = currentUser.role === 'admin';
+      
       const [d, u, a, p, t, s] = await Promise.all([
         api.getDepts(),
-        api.getUsers(),
+        isAdmin ? api.getUsers() : Promise.resolve([currentUser]),
         api.getAudits(),
         api.getPlans(),
         api.getTasks(),
-        api.getSettings()
+        isAdmin ? api.getSettings() : Promise.resolve(null)
       ]);
 
       setDepts(d);
       setUsers(u);
-      setAudits(a);
-      setPlans(p);
-      setTasks(t);
+
+      // Filter audits/tasks based on user role if not admin
+      if (currentUser.role === 'spoc') {
+        const userEmail = (currentUser.email || '').toLowerCase();
+        const userDepts = currentUser.depts || [];
+        const userUsername = (currentUser.username || '').toLowerCase();
+
+        const filteredTasks = t.filter(task => 
+          (task.spocMail && task.spocMail.toLowerCase() === userEmail) ||
+          userDepts.includes(task.dept) ||
+          userDepts.some(deptRef => d.find(dp => dp.ref === deptRef && (dp.dept === task.dept || dp.fn === task.fn))) ||
+          task.dept?.toLowerCase() === userUsername
+        );
+        const filteredAudits = a.filter(audit =>
+          userDepts.includes(audit.dept) ||
+          userDepts.includes(audit.ref) ||
+          userDepts.some(deptRef => d.find(dp => dp.ref === deptRef && (dp.dept === audit.dept || dp.fn === audit.fn)))
+        );
+        setAudits(filteredAudits);
+        setPlans(p);
+        setTasks(filteredTasks);
+      } else {
+        setAudits(a);
+        setPlans(p);
+        setTasks(t);
+      }
+
       if (s) setSettings(s);
     } catch (err: any) {
       console.error('Failed fetching app data', err);
@@ -108,11 +134,22 @@ export function useAuditData(currentUser: User | null) {
     }
   };
 
-  const dispatchTask = async (params: { auditId: string; spocMail?: string; hodMail?: string }) => {
+  const dispatchTask = async (params: {
+    auditId: string;
+    spocMail?: string;
+    hodMail?: string;
+    smtpServerId?: string;
+    attachments?: any[];
+    includeAttachment?: boolean;
+  }) => {
     try {
-      const res = await api.dispatchAudit(params.auditId, params.spocMail, params.hodMail);
+      const res = await api.dispatchAudit(params);
       await fetchAll();
-      addToast('🚀 Audit findings dispatched & 72h SLA clock started');
+      if (res.realEmailDelivered) {
+        addToast(`✉️ Real Email delivered to ${params.spocMail || 'SPOC'} via ${res.serverName || 'SMTP'}!`);
+      } else {
+        addToast('🚀 Audit findings dispatched & 72h SLA clock started');
+      }
       return res.task;
     } catch (err: any) {
       setError(err.message);

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { User, AuditTask, AuditReport } from '../types';
+import { CheckCircle2, Check, AlertCircle } from 'lucide-react';
 
 interface SpocActionsViewProps {
   user: User;
@@ -68,15 +69,15 @@ export const SpocActionsView: React.FC<SpocActionsViewProps> = ({
     });
 
     if (!valid) {
-      onToast('❌ Please fill all required fields before submitting.');
+      onToast('Please fill all required fields before submitting.');
       return;
     }
 
     try {
       await onSubmitResponse({ taskId, responses: taskResponses });
-      onToast('✅ Corrective actions submitted successfully!');
+      onToast('Corrective actions submitted successfully!');
     } catch (err: any) {
-      onToast(`❌ Submission error: ${err.message}`);
+      onToast(`Submission error: ${err.message}`);
     }
   };
 
@@ -96,7 +97,10 @@ export const SpocActionsView: React.FC<SpocActionsViewProps> = ({
       {myDepts.length === 0 ? (
         <div className="alert ai">No departments assigned to your account. Contact Admin.</div>
       ) : myTasks.length === 0 ? (
-        <div className="alert as">✅ No open action items for your department(s).</div>
+        <div className="alert as" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <CheckCircle2 size={15} style={{ color: 'var(--green)' }} />
+          <span>No open action items for your department(s).</span>
+        </div>
       ) : (
         myTasks.map(t => {
           const actionF = t.findings.filter(f => f.type !== 't1');
@@ -114,8 +118,9 @@ export const SpocActionsView: React.FC<SpocActionsViewProps> = ({
           if (t.status === 'Closed' || t.status === 'Completed') {
             return (
               <div key={t.taskId} className="card">
-                <div className="alert as">
-                  ✅ Task {t.taskId} — {t.fn} — {t.status}.
+                <div className="alert as" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <CheckCircle2 size={15} style={{ color: 'var(--green)' }} />
+                  <span>Task {t.taskId} — {t.fn} — {t.status}.</span>
                 </div>
               </div>
             );
@@ -195,8 +200,9 @@ export const SpocActionsView: React.FC<SpocActionsViewProps> = ({
               })}
 
               <div className="brow">
-                <button className="btn btn-g" onClick={() => handleSave(t.taskId)}>
-                  ✅ Submit My Response
+                <button className="btn btn-g" onClick={() => handleSave(t.taskId)} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <Check size={14} />
+                  <span>Submit My Response</span>
                 </button>
               </div>
             </div>

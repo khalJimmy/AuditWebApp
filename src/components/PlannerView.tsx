@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AuditPlan, User } from '../types';
 import * as XLSX from 'xlsx';
+import { Plus, MapPin, Download, Play, Edit2, Trash2 } from 'lucide-react';
 
 interface PlannerViewProps {
   currentUser?: User | null;
@@ -76,7 +77,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
     const ws = XLSX.utils.json_to_sheet(data);
     XLSX.utils.book_append_sheet(wb, ws, 'Monthly Planner');
     XLSX.writeFile(wb, `Audit_Planner_${new Date().toISOString().split('T')[0]}.xlsx`);
-    onToast?.('✅ Exported planner to Excel');
+    onToast?.('Exported planner to Excel');
   };
 
   return (
@@ -90,14 +91,15 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
             Schedule audits · Notify stakeholders {isAuditor && auditorZone ? ` (Filtered for ${auditorZone} Zone)` : ''}
           </div>
         </div>
-        <button className="btn btn-r" onClick={onOpenPlanModal}>
-          + Create Plan
+        <button className="btn btn-r" onClick={() => onOpenPlanModal()} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+          <Plus size={14} />
+          <span>Create Plan</span>
         </button>
       </div>
 
       {isAuditor && (
         <div className="alert ai" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span>📍</span>
+          <MapPin size={16} style={{ color: 'var(--brand)', flexShrink: 0 }} />
           <div>
             <strong>Auditor Zone Active ({auditorZone}):</strong> Showing plans assigned to or created for <strong>{auditorZone} Zone</strong>.
           </div>
@@ -142,8 +144,9 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
             <option>YET TO AUDIT</option>
           </select>
 
-          <button className="btn btn-o btn-sm" onClick={exportExcel}>
-            ⬇ Export
+          <button className="btn btn-o btn-sm" onClick={exportExcel} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <Download size={13} />
+            <span>Export</span>
           </button>
         </div>
 
@@ -167,7 +170,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
               {filteredPlans.length === 0 ? (
                 <tr>
                   <td colSpan={10} style={{ textAlign: 'center', padding: '22px', color: 'var(--muted)' }}>
-                    No plans found. Click + Create Plan to begin.
+                    No plans found. Click Create Plan to begin.
                   </td>
                 </tr>
               ) : (
@@ -216,8 +219,10 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
                           className="btn btn-g btn-xs"
                           onClick={() => onOpenAuditFormForPlan(p)}
                           title="Fill Audit Report for this Plan"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}
                         >
-                          ▶ Fill Audit
+                          <Play size={11} />
+                          <span>Fill Audit</span>
                         </button>
                       )}
                       {onOpenPlanModal && (
@@ -225,18 +230,19 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
                           className="btn btn-o btn-xs"
                           onClick={() => onOpenPlanModal(p)}
                           title="Edit Plan"
+                          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}
                         >
-                          ✏
+                          <Edit2 size={12} />
                         </button>
                       )}
                       {onDeletePlan && (
                         <button
                           className="btn btn-xs"
-                          style={{ background: '#fee2e2', color: '#b91c1c' }}
+                          style={{ background: '#fee2e2', color: '#b91c1c', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}
                           onClick={() => onDeletePlan(p.planId)}
                           title="Delete Plan"
                         >
-                          ✕
+                          <Trash2 size={12} />
                         </button>
                       )}
                     </td>

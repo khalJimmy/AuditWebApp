@@ -3,6 +3,7 @@ import { Department } from '../types';
 import { DepartmentCatalog } from '../models/DepartmentCatalog';
 import { DepartmentModel } from '../models/DepartmentModel';
 import * as XLSX from 'xlsx';
+import { Plus, Download, Upload, Edit2, Trash2 } from 'lucide-react';
 
 interface DepartmentsViewProps {
   depts: (Department | DepartmentModel)[];
@@ -37,7 +38,7 @@ export const DepartmentsView: React.FC<DepartmentsViewProps> = ({
     const ws = XLSX.utils.json_to_sheet(data);
     XLSX.utils.book_append_sheet(wb, ws, 'Departments');
     XLSX.writeFile(wb, 'Departments_List.xlsx');
-    onToast('✅ Exported departments list to Excel');
+    onToast('Exported departments list to Excel');
   };
 
   return (
@@ -49,8 +50,9 @@ export const DepartmentsView: React.FC<DepartmentsViewProps> = ({
           </div>
           <div className="ps">Add · Edit · Rename · Delete departments dynamically</div>
         </div>
-        <button className="btn btn-r" onClick={() => onOpenDeptModal()}>
-          + Add Department
+        <button className="btn btn-r" onClick={() => onOpenDeptModal()} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+          <Plus size={14} />
+          <span>Add Department</span>
         </button>
       </div>
 
@@ -66,11 +68,13 @@ export const DepartmentsView: React.FC<DepartmentsViewProps> = ({
             placeholder="Search departments…"
             style={{ maxWidth: '280px' }}
           />
-          <button className="btn btn-o btn-sm" onClick={exportExcel}>
-            ⬇ Export List
+          <button className="btn btn-o btn-sm" onClick={exportExcel} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <Download size={13} />
+            <span>Export List</span>
           </button>
-          <button className="btn btn-o btn-sm" onClick={onOpenImportModal}>
-            ⬆ Import CSV
+          <button className="btn btn-o btn-sm" onClick={onOpenImportModal} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <Upload size={13} />
+            <span>Import CSV</span>
           </button>
         </div>
 
@@ -130,15 +134,17 @@ export const DepartmentsView: React.FC<DepartmentsViewProps> = ({
                 <span style={{ color: 'var(--muted)', fontSize: '10.5px' }}>{d.sm || '—'}</span>
               </div>
               <div style={{ display: 'flex', gap: '5px' }}>
-                <button className="btn btn-o btn-xs" onClick={() => onOpenDeptModal(d.ref)}>
-                  ✏ Edit
+                <button className="btn btn-o btn-xs" onClick={() => onOpenDeptModal(d.ref)} style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                  <Edit2 size={11} />
+                  <span>Edit</span>
                 </button>
                 <button
                   className="btn btn-xs"
-                  style={{ background: '#fee2e2', color: '#b91c1c' }}
+                  style={{ background: '#fee2e2', color: '#b91c1c', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}
                   onClick={() => onDeleteDept(d.ref)}
+                  title="Delete Department"
                 >
-                  ✕
+                  <Trash2 size={12} />
                 </button>
               </div>
             </div>

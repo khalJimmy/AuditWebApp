@@ -1,5 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
+import {
+  Zap,
+  RefreshCw,
+  Download,
+  BarChart2,
+  Calendar,
+  Database,
+  Activity,
+  CheckCircle2,
+  Server
+} from 'lucide-react';
 
 interface UsageData {
   supabaseLimits?: {
@@ -167,7 +178,7 @@ export const SparkUsageMetrics: React.FC<{ onToast?: (msg: string) => void }> = 
       const res = await api.getUsageMetrics();
       setData(res);
     } catch (err: any) {
-      if (onToast) onToast(`❌ Failed loading usage metrics: ${err.message}`);
+      if (onToast) onToast(`Failed loading usage metrics: ${err.message}`);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -197,13 +208,13 @@ export const SparkUsageMetrics: React.FC<{ onToast?: (msg: string) => void }> = 
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    if (onToast) onToast('📊 Usage logs exported as CSV successfully');
+    if (onToast) onToast('Usage logs exported as CSV successfully');
   };
 
   if (loading) {
     return (
       <div className="card" style={{ padding: '24px', textAlign: 'center' }}>
-        <div style={{ color: '#64748b', fontSize: '13px' }}>⏳ Loading Spark Plan Usage Metrics &amp; Analytics...</div>
+        <div style={{ color: '#64748b', fontSize: '13px' }}>Loading Plan Usage Metrics &amp; Analytics...</div>
       </div>
     );
   }
@@ -221,7 +232,8 @@ export const SparkUsageMetrics: React.FC<{ onToast?: (msg: string) => void }> = 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
         <div>
           <div className="ctitle" style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-            <span>⚡ Supabase &amp; Vercel Free Tier Metrics &amp; Quota Analytics</span>
+            <Zap size={16} style={{ color: 'var(--brand)' }} />
+            <span>Supabase &amp; Vercel Tier Metrics &amp; Quota Analytics</span>
           </div>
           <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
             Supabase Postgres 500MB DB Limit · Vercel Serverless SLA &amp; Bandwidth Monitor · Rate Limit Protection
@@ -237,27 +249,32 @@ export const SparkUsageMetrics: React.FC<{ onToast?: (msg: string) => void }> = 
               fontWeight: '600',
               background: '#ecfdf5',
               color: '#047857',
-              border: '1px solid #a7f3d0'
+              border: '1px solid #a7f3d0',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px'
             }}
           >
-            🟢 Status: {analytics.quotaStatus} (Within Free Quota Limits)
+            <CheckCircle2 size={12} /> Status: {analytics.quotaStatus} (Within Quota Limits)
           </span>
           <button
             type="button"
             className="btn btn-o btn-xs"
             onClick={fetchMetrics}
             disabled={refreshing}
-            style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
           >
-            🔄 {refreshing ? 'Refreshing...' : 'Live Refresh'}
+            <RefreshCw size={11} className={refreshing ? 'animate-spin' : ''} />
+            <span>{refreshing ? 'Refreshing...' : 'Live Refresh'}</span>
           </button>
           <button
             type="button"
             className="btn btn-o btn-xs"
             onClick={handleExportCSV}
-            style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
           >
-            📥 Export CSV Logs
+            <Download size={11} />
+            <span>Export CSV Logs</span>
           </button>
         </div>
       </div>
@@ -265,7 +282,7 @@ export const SparkUsageMetrics: React.FC<{ onToast?: (msg: string) => void }> = 
       {/* MINIMAL DONUT CHARTS GRID */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', marginBottom: '20px' }}>
         <MinimalDonutChart
-          title="⚡ Supabase DB Storage"
+          title="Supabase DB Storage"
           value={currentStorageMb}
           limit={subStorageLimit}
           unit="MB"
@@ -274,7 +291,7 @@ export const SparkUsageMetrics: React.FC<{ onToast?: (msg: string) => void }> = 
         />
 
         <MinimalDonutChart
-          title="🌐 Supabase Egress / Day"
+          title="Supabase Egress / Day"
           value={today.egressMb}
           limit={Math.round((supabaseLimits?.egressMbMonth || 2048) / 30)}
           unit="MB"
@@ -283,7 +300,7 @@ export const SparkUsageMetrics: React.FC<{ onToast?: (msg: string) => void }> = 
         />
 
         <MinimalDonutChart
-          title="▲ Vercel Bandwidth"
+          title="Vercel Bandwidth"
           value={+(today.egressMb * 30 / 1024).toFixed(2)}
           limit={vercelBwLimit}
           unit="GB"
@@ -292,7 +309,7 @@ export const SparkUsageMetrics: React.FC<{ onToast?: (msg: string) => void }> = 
         />
 
         <MinimalDonutChart
-          title="📖 Daily Operations Log"
+          title="Daily Operations Log"
           value={today.reads + today.writes}
           limit={sparkLimits.readsDaily + sparkLimits.writesDaily}
           unit="reqs"
@@ -303,33 +320,42 @@ export const SparkUsageMetrics: React.FC<{ onToast?: (msg: string) => void }> = 
 
       {/* ANALYTICS SUMMARY CARDS */}
       <div style={{ background: '#f1f5f9', padding: '14px', borderRadius: '8px', marginBottom: '20px' }}>
-        <div style={{ fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '10px' }}>
-          📊 Supabase &amp; Vercel Free Tier Quotas &amp; Infrastructure Health
+        <div style={{ fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <BarChart2 size={13} style={{ color: 'var(--brand)' }} />
+          <span>Supabase &amp; Vercel Quotas &amp; Infrastructure Health</span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
           <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
-            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>⚡ Supabase Postgres Pool</span>
+            <span style={{ fontSize: '11px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Database size={11} /> Supabase Postgres Pool
+            </span>
             <strong style={{ fontSize: '13px', color: '#0f172a' }}>
               60 Max Pool Connections · SSL Transaction Mode
             </strong>
           </div>
 
           <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
-            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>▲ Vercel Serverless SLA</span>
+            <span style={{ fontSize: '11px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Server size={11} /> Vercel Serverless SLA
+            </span>
             <strong style={{ fontSize: '13px', color: '#0f172a' }}>
               10s Execution SLA · 4.5MB Max Payload
             </strong>
           </div>
 
           <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
-            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Avg Daily Traffic</span>
+            <span style={{ fontSize: '11px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Activity size={11} /> Avg Daily Traffic
+            </span>
             <strong style={{ fontSize: '13px', color: '#0f172a' }}>
               {analytics.avgReadsPerDay.toLocaleString()} Reads / {analytics.avgWritesPerDay.toLocaleString()} Writes
             </strong>
           </div>
 
           <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
-            <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Supabase Storage Headroom</span>
+            <span style={{ fontSize: '11px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Database size={11} /> Supabase Storage Headroom
+            </span>
             <strong style={{ fontSize: '13px', color: '#10b981' }}>
               {(100 - (analytics.supabaseStoragePercent || analytics.storageCapacityPercent)).toFixed(1)}% Free Space
             </strong>
@@ -340,8 +366,9 @@ export const SparkUsageMetrics: React.FC<{ onToast?: (msg: string) => void }> = 
       {/* DAILY READ / WRITE LOGGED TABLE */}
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-          <span style={{ fontSize: '13px', fontWeight: '700', color: '#1e293b' }}>
-            📅 Daily Logged Read &amp; Write Operations
+          <span style={{ fontSize: '13px', fontWeight: '700', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Calendar size={13} style={{ color: 'var(--brand)' }} />
+            <span>Daily Logged Read &amp; Write Operations</span>
           </span>
           <span style={{ fontSize: '11px', color: '#64748b' }}>Logged per calendar day</span>
         </div>

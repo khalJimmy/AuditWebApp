@@ -23,5 +23,22 @@ export const INITIAL_SETTINGS: SystemSettings = {
     { id: 'P9', title: 'Customer / Vendor Impact', max: 100 },
     { id: 'P10', title: 'Previous Audit Action Implementation', max: 100 }
   ],
-  senderEmail: 'audit.pnc@casagrand.co.in'
+  senderEmail: 'audit.pnc@casagrand.co.in',
+  smtpServers: [
+    {
+      id: 'smtp_gmail_default',
+      name: 'Gmail SMTP (Google Workspace / @gmail.com)',
+      provider: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
+      user: 'sfjimelliot@gmail.com',
+      pass: '',
+      fromName: 'Casagrand Quality & Process Audit',
+      fromEmail: 'sfjimelliot@gmail.com',
+      isDefault: true,
+      status: 'untested'
+    }
+  ],
+  activeSmtpServerId: 'smtp_gmail_default'
 };

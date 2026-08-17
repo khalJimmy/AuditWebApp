@@ -11,9 +11,10 @@ import {
   INITIAL_TASKS,
   h6
 } from './src/data/mockData.js';
-import { User, Department, AuditReport, AuditPlan, AuditTask, SystemSettings } from './src/types.js';
+import { User, Department, AuditReport, AuditPlan, AuditTask, SystemSettings, SmtpServerConfig, EmailAttachment } from './src/types.js';
 import { renderAuditScheduledEmail, renderCapaClockTickingEmail } from './src/utils/emailTemplates.js';
 import { initPostgresSchema } from './src/db/index.js';
+import nodemailer from 'nodemailer';
 
 // In-memory Database state initialized with mock DB data
 let users: User[] = [...INITIAL_USERS];
@@ -577,10 +578,140 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
     }
   });
 
-  // DISPATCH AUDIT (Create Task)
-  app.post('/api/dispatch', (req: Request, res: Response, next: NextFunction) => {
+  // ==========================================
+  // SMTP EMAIL TRANSPORTER & ATTACHMENT LOGIC
+  // ==========================================
+  function getSmtpConfig(customServerId?: string): SmtpServerConfig | null {
+    if (customServerId && settings.smtpServers) {
+      const found = settings.smtpServers.find(s => s.id === customServerId);
+      if (found) return found;
+    }
+    if (settings.activeSmtpServerId && settings.smtpServers) {
+      const active = settings.smtpServers.find(s => s.id === settings.activeSmtpServerId);
+      if (active) return active;
+    }
+    if (settings.smtpServers && settings.smtpServers.length > 0) {
+      const def = settings.smtpServers.find(s => s.isDefault) || settings.smtpServers[0];
+      return def;
+    }
+    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+      return {
+        id: 'env_smtp',
+        name: 'Environment SMTP Relay',
+        provider: (process.env.SMTP_PROVIDER as any) || 'gmail',
+        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+        port: Number(process.env.SMTP_PORT) || 587,
+        secure: process.env.SMTP_SECURE === 'true',
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+        fromName: process.env.SMTP_FROM_NAME || 'Casagrand Quality Audit',
+        fromEmail: process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER,
+        isDefault: true
+      };
+    }
+    return null;
+  }
+
+  function createTransporter(cfg: SmtpServerConfig) {
+    const cleanPass = (cfg.pass || '').replace(/\s+/g, '');
+    const cleanUser = (cfg.user || '').trim();
+
+    if (cfg.provider === 'gmail' || cfg.host?.toLowerCase().includes('gmail.com')) {
+      return nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: cleanUser,
+          pass: cleanPass
+        }
+      });
+    }
+
+    return nodemailer.createTransport({
+      host: cfg.host?.trim() || 'smtp.gmail.com',
+      port: Number(cfg.port) || 587,
+      secure: cfg.secure ?? (Number(cfg.port) === 465),
+      auth: {
+        user: cleanUser,
+        pass: cleanPass
+      },
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+  }
+
+  async function sendOutboundMail(params: {
+    smtpConfig?: SmtpServerConfig | null;
+    serverId?: string;
+    to: string;
+    cc?: string;
+    bcc?: string;
+    subject: string;
+    html: string;
+    text?: string;
+    attachments?: EmailAttachment[];
+  }): Promise<{ success: boolean; messageId?: string; simulated?: boolean; serverName?: string; error?: string }> {
+    const cfg = params.smtpConfig || getSmtpConfig(params.serverId);
+    const cleanPass = (cfg?.pass || '').replace(/\s+/g, '');
+
+    // Format attachments
+    const formattedAttachments = params.attachments?.map(att => {
+      if (att.encoding === 'base64') {
+        return {
+          filename: att.filename,
+          content: Buffer.from(att.content, 'base64'),
+          contentType: att.contentType
+        };
+      }
+      return {
+        filename: att.filename,
+        content: att.content,
+        contentType: att.contentType
+      };
+    });
+
+    if (!cfg || !cfg.user || !cleanPass) {
+      console.log(`[SMTP SIMULATED] No app password configured for server "${cfg?.name || 'Default'}". Simulated email sent to ${params.to}`);
+      return {
+        success: true,
+        simulated: true,
+        serverName: cfg?.name || 'Simulated Local Relay',
+        messageId: `sim_${Date.now()}`
+      };
+    }
+
     try {
-      const { auditId, spocMail, hodMail } = req.body;
+      const transporter = createTransporter(cfg);
+      const fromAddr = `"${cfg.fromName || 'Casagrand Quality Audit'}" <${cfg.fromEmail || cfg.user}>`;
+
+      const info = await transporter.sendMail({
+        from: fromAddr,
+        to: params.to,
+        cc: params.cc || undefined,
+        bcc: params.bcc || undefined,
+        subject: params.subject,
+        html: params.html,
+        text: params.text,
+        attachments: formattedAttachments
+      });
+
+      console.log(`[SMTP OUTBOUND SUCCESS] Email sent to ${params.to} (ID: ${info.messageId}) via ${cfg.name}`);
+      return {
+        success: true,
+        simulated: false,
+        serverName: cfg.name,
+        messageId: info.messageId
+      };
+    } catch (err: any) {
+      console.error(`[SMTP OUTBOUND ERROR] Failed sending to ${params.to} via ${cfg.name}:`, err.message);
+      throw err;
+    }
+  }
+
+  // DISPATCH AUDIT (Create Task & Deliver Email with Attachments)
+  app.post('/api/dispatch', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { auditId, spocMail, hodMail, smtpServerId, attachments, includeAttachment } = req.body;
       const audit = audits.find(a => a.auditId === auditId);
       if (!audit) {
         res.status(404).json({ error: 'Audit report not found.' });
@@ -633,12 +764,56 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
         directTokenLink
       });
 
-      console.log(`[FIREBASE SMTP DISPATCH] Queued email for ${audit.auditId} to ${newTask.spocMail} and CC ${newTask.hodMail}`);
+      // Prepare attached audit summary report if requested
+      const outboundAttachments: EmailAttachment[] = attachments ? [...attachments] : [];
+      if (includeAttachment !== false) {
+        const auditSummaryCsv = [
+          `Audit ID,Department,Function,Audit Date,Auditor,Compliance %,Process Score`,
+          `"${audit.auditId}","${audit.dept}","${audit.fn}","${audit.auditDate}","${audit.auditor}","${audit.compliancePct}%","${audit.processScore}"`,
+          ``,
+          `Finding ID,Type,Subtype,Process/Area,Description,Evidence,Immediate Action,Root Cause,CAPA,Due Date`,
+          ...audit.findings.map(f => `"${f.id}","${f.type}","${f.subtype || ''}","${f.process || ''}","${(f.description || '').replace(/"/g, '""')}","${(f.evidence || '').replace(/"/g, '""')}","${(f.imm || '').replace(/"/g, '""')}","${(f.rc || '').replace(/"/g, '""')}","${(f.capa || '').replace(/"/g, '""')}","${f.dueDate || ''}"`)
+        ].join('\n');
+
+        outboundAttachments.push({
+          filename: `Audit_Summary_${audit.auditId}.csv`,
+          content: auditSummaryCsv,
+          contentType: 'text/csv'
+        });
+      }
+
+      // Outbound email attempt via active/selected SMTP server
+      let mailResult: { success: boolean; simulated?: boolean; messageId?: string; serverName?: string } = {
+        success: true,
+        simulated: true
+      };
+
+      try {
+        mailResult = await sendOutboundMail({
+          serverId: smtpServerId,
+          to: newTask.spocMail || 'spoc@casagrand.co.in',
+          cc: newTask.hodMail,
+          subject: `🚨 [CAPA Required - 72h SLA] Process Audit Findings: ${audit.auditId} - ${audit.dept}`,
+          html: emailHtml,
+          attachments: outboundAttachments
+        });
+      } catch (mailErr: any) {
+        console.warn('[DISPATCH] Email delivery warning (saved to task list anyway):', mailErr.message);
+        mailResult = {
+          success: false,
+          simulated: false,
+          serverName: 'SMTP Error: ' + mailErr.message
+        };
+      }
 
       res.json({
         success: true,
         task: newTask,
         emailDispatched: true,
+        realEmailDelivered: !mailResult.simulated && mailResult.success,
+        simulated: mailResult.simulated,
+        serverName: mailResult.serverName,
+        messageId: mailResult.messageId,
         recipient: newTask.spocMail,
         hodRecipient: newTask.hodMail,
         slaDeadline: dueAt,
@@ -714,15 +889,131 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
     }
   });
 
-  // FIREBASE EMAIL SMTP DISPATCH & TEST ENDPOINT
-  app.post('/api/email/send-test', (req: Request, res: Response, next: NextFunction) => {
+  // TEST SMTP CONNECTION & SEND VERIFICATION EMAIL
+  app.post('/api/email/test-smtp', async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { templateType, recipientEmail, hodEmail, data, html } = req.body;
+      const { smtpConfig, testRecipient } = req.body;
+      if (!smtpConfig || !smtpConfig.user || !smtpConfig.pass) {
+        res.status(400).json({ error: 'SMTP username/email and App Password are required' });
+        return;
+      }
+
+      const transporter = createTransporter(smtpConfig);
+      await transporter.verify();
+
+      const recipient = testRecipient || smtpConfig.user;
+      const testHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+          <div style="background: #e11d48; padding: 18px 24px; color: #ffffff;">
+            <h2 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">CASAGRAND PROCESS QUALITY AUDIT</h2>
+            <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">SMTP Server Integration Verification</p>
+          </div>
+          <div style="padding: 24px; background: #ffffff; color: #1e293b; font-size: 14px; line-height: 1.6;">
+            <p style="margin-top: 0; font-weight: 600; color: #059669; font-size: 16px;">
+              ✅ SMTP Server Connected Successfully!
+            </p>
+            <p>This verification email confirms that your outgoing mail server configuration is active and ready to deliver audit alerts, SLA notifications, and reports from the Casagrand Process Audit platform.</p>
+            <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0;">
+              <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 10px 14px; color: #64748b; font-weight: 600; width: 140px;">Server Label:</td>
+                <td style="padding: 10px 14px; color: #0f172a; font-weight: 600;">${smtpConfig.name || 'Gmail SMTP'}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 10px 14px; color: #64748b; font-weight: 600;">Provider / Host:</td>
+                <td style="padding: 10px 14px; color: #0f172a;">${smtpConfig.host || 'smtp.gmail.com'} (Port ${smtpConfig.port || 587})</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 10px 14px; color: #64748b; font-weight: 600;">Sender Account:</td>
+                <td style="padding: 10px 14px; color: #0f172a;">${smtpConfig.user}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px 14px; color: #64748b; font-weight: 600;">Verified At:</td>
+                <td style="padding: 10px 14px; color: #0f172a;">${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST</td>
+              </tr>
+            </table>
+            <p style="font-size: 12px; color: #64748b; margin-bottom: 0;">
+              Audit dispatch notices, CAPA alerts, and reminders will now be sent automatically through this verified relay.
+            </p>
+          </div>
+        </div>
+      `;
+
+      const info = await transporter.sendMail({
+        from: `"${smtpConfig.fromName || 'Casagrand Quality Audit'}" <${smtpConfig.fromEmail || smtpConfig.user}>`,
+        to: recipient,
+        subject: '✅ Casagrand Process Audit: SMTP Connection Verified',
+        html: testHtml
+      });
+
+      res.json({
+        success: true,
+        message: `SMTP connection verified and test email delivered to ${recipient}`,
+        messageId: info.messageId,
+        verifiedAt: new Date().toISOString()
+      });
+    } catch (err: any) {
+      console.error('[SMTP VERIFY ERROR]:', err);
+      let message = err.message || 'SMTP connection failed';
+      if (message.includes('Username and Password not accepted') || message.includes('BadCredentials') || message.includes('535-5.7.8')) {
+        message = 'Gmail rejected login credentials. Note: Gmail requires a 16-character App Password (not your normal Google account password). Go to Google Account > Security > 2-Step Verification > App Passwords to generate one.';
+      }
+      res.status(400).json({ error: message });
+    }
+  });
+
+  // SEND CUSTOM OUTBOUND EMAIL (WITH OPTIONAL ATTACHMENTS)
+  app.post('/api/email/send', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { serverId, to, cc, bcc, subject, html, text, attachments } = req.body;
+      if (!to || !subject) {
+        res.status(400).json({ error: 'Recipient "to" and "subject" are required' });
+        return;
+      }
+
+      const result = await sendOutboundMail({
+        serverId,
+        to,
+        cc,
+        bcc,
+        subject,
+        html,
+        text,
+        attachments
+      });
+
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Failed to send email' });
+    }
+  });
+
+  // FIREBASE / SMTP EMAIL DISPATCH & TEST ENDPOINT
+  app.post('/api/email/send-test', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { templateType, recipientEmail, hodEmail, data, html, serverId, attachments } = req.body;
       const docId = `mail_trigger_${Date.now()}`;
       
-      console.log(`[FIREBASE SMTP TRIGGER] Document queued in Firestore /mail/${docId}`);
-      console.log(`[FIREBASE SMTP RECIPIENTS] To: ${recipientEmail}, CC: ${hodEmail || 'N/A'}`);
-      console.log(`[FIREBASE SMTP TEMPLATE] ${templateType || 'CAPA SLA Urgency Alert'}`);
+      let mailResult: { success: boolean; simulated?: boolean; serverName?: string; messageId?: string } = {
+        success: true,
+        simulated: true,
+        serverName: 'Local Simulated Queue',
+        messageId: docId
+      };
+
+      try {
+        mailResult = await sendOutboundMail({
+          serverId,
+          to: recipientEmail || 'sfjimelliot@gmail.com',
+          cc: hodEmail,
+          subject: `[CASAGRAND NOTIFICATION] ${templateType === 'schedule' ? 'Audit Schedule Announcement' : '🚨 [CAPA Required - 72h SLA] Process Audit Findings'}`,
+          html: html || '<p>Casagrand Quality Audit Notification</p>',
+          attachments
+        });
+      } catch (mailErr: any) {
+        console.warn('[EMAIL SEND-TEST WARNING]:', mailErr.message);
+        res.status(400).json({ error: mailErr.message });
+        return;
+      }
 
       // Track egress & writes metric in today's usage logs
       const todayStr = new Date().toISOString().split('T')[0];
@@ -734,9 +1025,10 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
       res.json({
         success: true,
         docId,
-        protocol: 'Firebase Email Trigger Extension (Firestore -> SMTP)',
-        queueCollection: '/mail',
-        status: 'QUEUED_SMTP',
+        realEmailDelivered: !mailResult.simulated && mailResult.success,
+        simulated: mailResult.simulated,
+        serverName: mailResult.serverName,
+        messageId: mailResult.messageId,
         recipientEmail,
         hodEmail,
         dispatchedAt: new Date().toISOString(),

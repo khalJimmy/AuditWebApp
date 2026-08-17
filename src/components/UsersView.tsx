@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { User, UserRole } from '../types';
+import { Plus, Search, Pause, Play, Edit2, Trash2 } from 'lucide-react';
 
 interface UsersViewProps {
   users: User[];
@@ -65,8 +66,9 @@ export const UsersView: React.FC<UsersViewProps> = ({
           </div>
           <div className="ps">Login credentials · Role permissions · Contact routing · Active status</div>
         </div>
-        <button className="btn btn-r" onClick={() => onOpenUserModal()}>
-          + Add User
+        <button className="btn btn-r" onClick={() => onOpenUserModal()} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+          <Plus size={14} />
+          <span>Add User</span>
         </button>
       </div>
 
@@ -83,13 +85,16 @@ export const UsersView: React.FC<UsersViewProps> = ({
       {/* FILTER BAR */}
       <div className="card" style={{ marginBottom: '14px', padding: '12px' }}>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-          <input
-            type="text"
-            placeholder="🔍 Search name, username, email..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            style={{ flex: 1, minWidth: '200px', padding: '6px 10px', fontSize: '12px', borderRadius: '6px' }}
-          />
+          <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: '200px', background: 'var(--surface2)', borderRadius: '6px', padding: '0 8px', border: '1px solid var(--border)' }}>
+            <Search size={14} style={{ color: 'var(--muted)', marginRight: '6px' }} />
+            <input
+              type="text"
+              placeholder="Search name, username, email..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', padding: '6px 0', fontSize: '12px' }}
+            />
+          </div>
           <select
             value={roleFilter}
             onChange={e => setRoleFilter(e.target.value)}
@@ -186,21 +191,24 @@ export const UsersView: React.FC<UsersViewProps> = ({
                       className={`btn btn-xs ${isActive ? 'btn-o' : 'btn-g'}`}
                       onClick={() => handleToggleActive(u)}
                       title={isActive ? 'Suspend User Account' : 'Activate User Account'}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}
                     >
-                      {isActive ? '⏸ Suspend' : '▶ Activate'}
+                      {isActive ? <Pause size={11} /> : <Play size={11} />}
+                      <span>{isActive ? 'Suspend' : 'Activate'}</span>
                     </button>
                   )}
-                  <button className="btn btn-o btn-xs" onClick={() => onOpenUserModal(u.id)}>
-                    ✏ Edit
+                  <button className="btn btn-o btn-xs" onClick={() => onOpenUserModal(u.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                    <Edit2 size={11} />
+                    <span>Edit</span>
                   </button>
                   {u.id !== currentUser.id ? (
                     <button
                       className="btn btn-xs"
-                      style={{ background: '#fee2e2', color: '#b91c1c' }}
+                      style={{ background: '#fee2e2', color: '#b91c1c', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}
                       onClick={() => onDeleteUser(u.id)}
                       title="Delete User"
                     >
-                      ✕
+                      <Trash2 size={12} />
                     </button>
                   ) : (
                     <div />

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Department, User, Finding, FindingType, AuditReport, SystemSettings, PlanItem } from '../types';
 import { getZoneDeptContacts } from '../data/departmentsData';
 import * as XLSX from 'xlsx';
+import { CheckCircle2, AlertTriangle, Eye, ShieldAlert, Sparkles, Plus, Trash2, Calendar, Download, Printer, RotateCcw, Check } from 'lucide-react';
 
 interface AuditFormViewProps {
   currentUser?: User | null;
@@ -71,7 +72,7 @@ export const AuditFormView: React.FC<AuditFormViewProps> = ({
     setHodMail(p.hodMail || contacts.hodMail);
     if (contacts.hodName) setHod(contacts.hodName);
 
-    onToast(`📋 Pre-filled audit form for ${p.ref} - ${p.fn}`);
+    onToast(`Pre-filled audit form for ${p.ref} - ${p.fn}`);
   };
 
   useEffect(() => {
@@ -251,15 +252,15 @@ export const AuditFormView: React.FC<AuditFormViewProps> = ({
 
   const handleSubmit = async () => {
     if (!ref) {
-      onToast('❌ Please select a Department Ref');
+      onToast('Please select a Department Ref');
       return;
     }
     if (!auditDate) {
-      onToast('❌ Please enter Audit Date');
+      onToast('Please enter Audit Date');
       return;
     }
     if (!auditor) {
-      onToast('❌ Please select an Auditor');
+      onToast('Please select an Auditor');
       return;
     }
 
@@ -302,10 +303,10 @@ export const AuditFormView: React.FC<AuditFormViewProps> = ({
 
     try {
       const res = await onSubmitAudit(payload);
-      onToast(`✅ Audit report ${res.auditId} submitted! Go to Dispatch to send to department.`);
+      onToast(`Audit report ${res.auditId} submitted! Go to Dispatch to send to department.`);
       resetForm();
     } catch (err: any) {
-      onToast(`❌ Error submitting audit: ${err.message}`);
+      onToast(`Error submitting audit: ${err.message}`);
     }
   };
 
@@ -352,7 +353,7 @@ export const AuditFormView: React.FC<AuditFormViewProps> = ({
     XLSX.utils.book_append_sheet(wb, ws2, 'Findings');
 
     XLSX.writeFile(wb, `Audit_Report_${ref}_${auditDate}.xlsx`);
-    onToast('✅ Excel report downloaded');
+    onToast('Excel report downloaded');
   };
 
   const previewPrint = () => {
@@ -382,7 +383,7 @@ export const AuditFormView: React.FC<AuditFormViewProps> = ({
       <h2>Findings (${findings.length})</h2>
       <table><thead><tr><th>#</th><th>Type</th><th>Process</th><th>Description</th><th>Evidence</th><th>Immediate Action</th><th>Root Cause</th><th>CAPA</th></tr></thead><tbody>${rows}</tbody></table>
       <p style="margin-top:22px;font-size:10px;color:#999;">Generated: ${new Date().toLocaleString()} · ProcessAudit v4 · Casagrand P&C</p>
-      <button onclick="window.print()" style="padding:8px 18px;background:#c8401a;color:#fff;border:none;border-radius:6px;cursor:pointer;">🖨 Print / Save PDF</button>
+      <button onclick="window.print()" style="padding:8px 18px;background:#c8401a;color:#fff;border:none;border-radius:6px;cursor:pointer;">Print / Save PDF</button>
       </body></html>`);
     w.document.close();
   };
@@ -399,11 +400,13 @@ export const AuditFormView: React.FC<AuditFormViewProps> = ({
           </div>
         </div>
         <div style={{ display: 'flex', gap: '7px' }}>
-          <button className="btn btn-o btn-sm" onClick={resetForm}>
-            🗑 Reset
+          <button className="btn btn-o btn-sm" onClick={resetForm} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <RotateCcw size={13} />
+            <span>Reset</span>
           </button>
-          <button className="btn btn-r" onClick={handleSubmit}>
-            ✅ Submit Report
+          <button className="btn btn-r" onClick={handleSubmit} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+            <Check size={14} />
+            <span>Submit Report</span>
           </button>
         </div>
       </div>
@@ -411,8 +414,9 @@ export const AuditFormView: React.FC<AuditFormViewProps> = ({
       {/* Optional: Link Scheduled Plan */}
       {plans.length > 0 && (
         <div className="card" style={{ background: '#f8fafc', border: '1px solid var(--border)' }}>
-          <div className="ctitle" style={{ fontSize: '13px', margin: 0 }}>
-            <span>📅 Link Scheduled Audit Plan (Optional)</span>
+          <div className="ctitle" style={{ fontSize: '13px', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Calendar size={14} style={{ color: 'var(--red)' }} />
+            <span>Link Scheduled Audit Plan (Optional)</span>
           </div>
           <div style={{ marginTop: '8px', display: 'flex', gap: '12px', alignItems: 'center' }}>
             <select
@@ -566,26 +570,34 @@ export const AuditFormView: React.FC<AuditFormViewProps> = ({
           <div
             className={`ftab t1 ${curFT === 't1' ? 'on' : ''}`}
             onClick={() => setCurFT('t1')}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            ✅ Continuous Improvement (CI)
+            <CheckCircle2 size={14} />
+            <span>Continuous Improvement (CI)</span>
           </div>
           <div
             className={`ftab t2 ${curFT === 't2' ? 'on' : ''}`}
             onClick={() => setCurFT('t2')}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            👁 Observation
+            <Eye size={14} />
+            <span>Observation</span>
           </div>
           <div
             className={`ftab t3 ${curFT === 't3' ? 'on' : ''}`}
             onClick={() => setCurFT('t3')}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            ⚠ Process Risk
+            <AlertTriangle size={14} />
+            <span>Process Risk</span>
           </div>
           <div
             className={`ftab t4 ${curFT === 't4' ? 'on' : ''}`}
             onClick={() => setCurFT('t4')}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            🔴 Non-Compliance (NC)
+            <ShieldAlert size={14} />
+            <span>Non-Compliance (NC)</span>
           </div>
         </div>
 
@@ -616,8 +628,9 @@ export const AuditFormView: React.FC<AuditFormViewProps> = ({
             <span className="badge bo">Risk:{findings.filter(f => f.type === 't3').length}</span>
             <span className="badge br">NC:{findings.filter(f => f.type === 't4').length}</span>
           </div>
-          <button className="btn btn-b btn-sm" onClick={addFinding}>
-            + Add Finding Row
+          <button className="btn btn-b btn-sm" onClick={addFinding} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <Plus size={13} />
+            <span>Add Finding Row</span>
           </button>
         </div>
 
@@ -632,8 +645,9 @@ export const AuditFormView: React.FC<AuditFormViewProps> = ({
                 <span className={`badge ${f.type === 't1' ? 'bg' : f.type === 't2' ? 'by' : f.type === 't3' ? 'bo' : 'br'}`}>
                   {f.type === 't1' ? 'CI / No Finding' : f.type === 't2' ? 'Observation' : f.type === 't3' ? `Risk (${f.subtype || 'Process'})` : 'NC'}
                 </span>
-                <button className="btn btn-xs btn-o" onClick={() => removeFinding(f.id)}>
-                  ✕ Remove
+                <button className="btn btn-xs btn-o" onClick={() => removeFinding(f.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                  <Trash2 size={11} />
+                  <span>Remove</span>
                 </button>
               </div>
 
@@ -898,7 +912,7 @@ export const AuditFormView: React.FC<AuditFormViewProps> = ({
           <span className="sn">6</span> Submit &amp; Publish
         </div>
         <div className="alert aw">
-          ⚠ After submit → Admin/Lead must go to 📤 Dispatch to send the report to the department and start the 72-hour response clock.
+          After submit → Admin/Lead must go to Dispatch to send the report to the department and start the 72-hour response clock.
         </div>
         <div className="fg c2">
           <div className="field">
@@ -911,14 +925,17 @@ export const AuditFormView: React.FC<AuditFormViewProps> = ({
           </div>
         </div>
         <div className="brow">
-          <button className="btn btn-r" onClick={handleSubmit}>
-            ✅ Submit Report
+          <button className="btn btn-r" onClick={handleSubmit} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+            <Check size={14} />
+            <span>Submit Report</span>
           </button>
-          <button className="btn btn-b" onClick={downloadExcel}>
-            ⬇ Download Excel
+          <button className="btn btn-b" onClick={downloadExcel} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+            <Download size={14} />
+            <span>Download Excel</span>
           </button>
-          <button className="btn btn-o" onClick={previewPrint}>
-            👁 Preview / Print
+          <button className="btn btn-o" onClick={previewPrint} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+            <Eye size={14} />
+            <span>Preview / Print</span>
           </button>
         </div>
       </div>

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { PlanItem, AuditReport, Department, User, UserRole, ZoneName } from '../types';
+import { PlanItem, AuditReport, Department, User, UserRole, ZoneName, Settings, EmailAttachment } from '../types';
 import { getZoneDeptContacts } from '../data/departmentsData';
 import { h6 } from '../data/usersData';
 import * as XLSX from 'xlsx';
+import { Plus, Edit2, X, Send, Paperclip, Check, AlertTriangle, FileText, Upload, Save, CheckCircle2, Star, ChevronDown, ChevronRight, MapPin } from 'lucide-react';
 
 // ---------------------- PLAN MODAL ----------------------
 interface PlanModalProps {
@@ -69,8 +70,13 @@ export const PlanModal: React.FC<PlanModalProps> = ({ onClose, onSave, depts, ed
     <div className="modal-overlay">
       <div className="modal">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h3>{editingPlan ? '✏ Edit Audit Plan' : '+ Schedule New Audit'}</h3>
-          <button className="btn btn-o btn-xs" onClick={onClose}>✕</button>
+          <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {editingPlan ? <Edit2 size={16} /> : <Plus size={16} />}
+            <span>{editingPlan ? 'Edit Audit Plan' : 'Schedule New Audit'}</span>
+          </h3>
+          <button className="btn btn-o btn-xs" onClick={onClose}>
+            <X size={12} />
+          </button>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -135,7 +141,10 @@ export const PlanModal: React.FC<PlanModalProps> = ({ onClose, onSave, depts, ed
 
           <div className="brow">
             <button type="button" className="btn btn-o" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-r">💾 Save Schedule</button>
+            <button type="submit" className="btn btn-r" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+              <Save size={14} />
+              <span>Save Schedule</span>
+            </button>
           </div>
         </form>
       </div>
@@ -148,15 +157,53 @@ interface DispatchModalProps {
   auditId: string;
   audit: AuditReport;
   depts: Department[];
+  settings?: Settings;
   onClose: () => void;
-  onDispatch: (params: { auditId: string; spocMail: string; hodMail: string }) => Promise<void>;
+  onDispatch: (params: {
+    auditId: string;
+    spocMail: string;
+    hodMail: string;
+    smtpServerId?: string;
+    includeAttachment?: boolean;
+    attachments?: EmailAttachment[];
+  }) => Promise<void>;
 }
 
-export const DispatchModal: React.FC<DispatchModalProps> = ({ auditId, audit, depts, onClose, onDispatch }) => {
+export const DispatchModal: React.FC<DispatchModalProps> = ({ auditId, audit, depts, settings, onClose, onDispatch }) => {
   const contacts = getZoneDeptContacts(audit.ref, audit.zone, depts);
   const [spocMail, setSpocMail] = useState(audit.spocMail || contacts.spocMail);
   const [hodMail, setHodMail] = useState(audit.hodMail || contacts.hodMail);
   const [dispatching, setDispatching] = useState(false);
+  const [includeAttachment, setIncludeAttachment] = useState(true);
+  const [extraFiles, setExtraFiles] = useState<EmailAttachment[]>([]);
+
+  const smtpServers = settings?.smtpServers || [];
+  const activeSmtpId = settings?.activeSmtpServerId || (smtpServers.find(s => s.isDefault)?.id || smtpServers[0]?.id || '');
+  const [selectedServerId, setSelectedServerId] = useState<string>(activeSmtpId);
+
+  const selectedServer = smtpServers.find(s => s.id === selectedServerId);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    Array.from(files).forEach((file: File) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64Content = (reader.result as string).split(',')[1];
+        setExtraFiles(prev => [
+          ...prev,
+          {
+            filename: file.name,
+            content: base64Content,
+            encoding: 'base64',
+            contentType: file.type || 'application/octet-stream'
+          }
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
 
   const handleSend = async () => {
     if (!spocMail) {
@@ -165,7 +212,14 @@ export const DispatchModal: React.FC<DispatchModalProps> = ({ auditId, audit, de
     }
     try {
       setDispatching(true);
-      await onDispatch({ auditId, spocMail, hodMail });
+      await onDispatch({
+        auditId,
+        spocMail,
+        hodMail,
+        smtpServerId: selectedServerId || undefined,
+        includeAttachment,
+        attachments: extraFiles
+      });
       onClose();
     } catch (err: any) {
       alert(`Dispatch error: ${err.message}`);
@@ -176,15 +230,45 @@ export const DispatchModal: React.FC<DispatchModalProps> = ({ auditId, audit, de
 
   return (
     <div className="modal-overlay">
-      <div className="modal" style={{ maxWidth: '600px' }}>
+      <div className="modal" style={{ maxWidth: '640px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h3>📧 Dispatch Audit Findings — {auditId}</h3>
-          <button className="btn btn-o btn-xs" onClick={onClose}>✕</button>
+          <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Send size={16} />
+            <span>Dispatch Audit Findings — {auditId}</span>
+          </h3>
+          <button className="btn btn-o btn-xs" onClick={onClose}>
+            <X size={12} />
+          </button>
         </div>
 
-        <div className="alert ai" style={{ marginBottom: '14px' }}>
-          This will generate a 72-hour TAT task for <strong>{audit.dept}</strong> and trigger email notifications to the SPOC with a secure response link.
+        <div className="alert ai" style={{ marginBottom: '14px', fontSize: '12px' }}>
+          This will generate a 72-hour SLA task for <strong>{audit.dept}</strong> and deliver an email notification with one-click SPOC authorization and attached findings report.
         </div>
+
+        {/* OUTGOING SMTP SERVER SELECTOR */}
+        {smtpServers.length > 0 && (
+          <div style={{ background: 'var(--surface2)', padding: '10px 14px', borderRadius: '6px', marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 600 }}>Outgoing Mail Server:</span>
+              <select
+                value={selectedServerId}
+                onChange={e => setSelectedServerId(e.target.value)}
+                style={{ padding: '4px 8px', fontSize: '12px', borderRadius: '4px', border: '1px solid var(--border)', background: '#fff' }}
+              >
+                {smtpServers.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} ({s.user || 'No Email'}) {s.isDefault ? '(Default)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {selectedServer?.pass ? (
+              <span className="badge bg" style={{ fontSize: '10px' }}>Live SMTP</span>
+            ) : (
+              <span className="badge by" style={{ fontSize: '10px' }}>Local Queue</span>
+            )}
+          </div>
+        )}
 
         <div className="field" style={{ marginBottom: '12px' }}>
           <label>Department / Function</label>
@@ -202,7 +286,52 @@ export const DispatchModal: React.FC<DispatchModalProps> = ({ auditId, audit, de
           </div>
         </div>
 
-        <div style={{ background: 'var(--surface2)', padding: '12px', borderRadius: '8px', marginBottom: '16px', fontSize: '12px' }}>
+        {/* ATTACHMENT OPTIONS */}
+        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '12px 14px', borderRadius: '8px', marginBottom: '14px' }}>
+          <div style={{ fontWeight: 600, fontSize: '12px', color: 'var(--text)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <Paperclip size={13} />
+            <span>File Attachments</span>
+          </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer', marginBottom: '8px' }}>
+            <input
+              type="checkbox"
+              checked={includeAttachment}
+              onChange={e => setIncludeAttachment(e.target.checked)}
+            />
+            <span>Auto-attach Audit Findings Summary File (<code>Audit_Summary_{auditId}.csv</code>)</span>
+          </label>
+
+          <div style={{ marginTop: '6px' }}>
+            <label style={{ fontSize: '11px', color: 'var(--muted)', display: 'block', marginBottom: '4px' }}>
+              Attach Additional Evidence / Files (Optional):
+            </label>
+            <input
+              type="file"
+              multiple
+              onChange={handleFileUpload}
+              style={{ fontSize: '11px', padding: '4px' }}
+            />
+            {extraFiles.length > 0 && (
+              <div style={{ marginTop: '6px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {extraFiles.map((f, i) => (
+                  <span key={i} className="badge bb" style={{ fontSize: '10px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    <Paperclip size={10} />
+                    <span>{f.filename}</span>
+                    <button
+                      type="button"
+                      onClick={() => setExtraFiles(prev => prev.filter((_, idx) => idx !== i))}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1e40af', padding: 0 }}
+                    >
+                      <X size={10} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ background: 'var(--surface2)', padding: '10px 14px', borderRadius: '8px', marginBottom: '16px', fontSize: '12px' }}>
           <strong>Findings Breakdown to Dispatch:</strong>
           <div style={{ display: 'flex', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
             <span className="badge br">{audit.ncCount} Non-Compliance (NC)</span>
@@ -214,8 +343,9 @@ export const DispatchModal: React.FC<DispatchModalProps> = ({ auditId, audit, de
 
         <div className="brow">
           <button type="button" className="btn btn-o" onClick={onClose} disabled={dispatching}>Cancel</button>
-          <button type="button" className="btn btn-r" onClick={handleSend} disabled={dispatching}>
-            {dispatching ? 'Sending Notification…' : '🚀 Dispatch Now & Start 72h Clock'}
+          <button type="button" className="btn btn-r" onClick={handleSend} disabled={dispatching} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+            <Send size={14} />
+            <span>{dispatching ? 'Sending Notification & Attachments…' : 'Dispatch Now & Deliver Email with File'}</span>
           </button>
         </div>
       </div>
@@ -283,8 +413,13 @@ export const ResponseModal: React.FC<ResponseModalProps> = ({ auditId, audit, on
     <div className="modal-overlay">
       <div className="modal" style={{ maxWidth: '800px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h3>📝 Enter SPOC Corrective Action — {auditId}</h3>
-          <button className="btn btn-o btn-xs" onClick={onClose}>✕</button>
+          <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <FileText size={16} />
+            <span>Enter SPOC Corrective Action — {auditId}</span>
+          </h3>
+          <button className="btn btn-o btn-xs" onClick={onClose}>
+            <X size={12} />
+          </button>
         </div>
 
         {actionFindings.length === 0 ? (
@@ -347,8 +482,9 @@ export const ResponseModal: React.FC<ResponseModalProps> = ({ auditId, audit, on
 
         <div className="brow">
           <button type="button" className="btn btn-o" onClick={onClose}>Cancel</button>
-          <button type="button" className="btn btn-g" onClick={handleSubmit}>
-            ✅ Save Corrective Actions
+          <button type="button" className="btn btn-g" onClick={handleSubmit} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+            <Check size={14} />
+            <span>Save Corrective Actions</span>
           </button>
         </div>
       </div>
@@ -424,8 +560,13 @@ export const DeptModal: React.FC<DeptModalProps> = ({ onClose, onSave, editingDe
     <div className="modal-overlay">
       <div className="modal" style={{ maxWidth: '650px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h3>{editingDept ? '✏ Edit Department' : '+ Add New Department'}</h3>
-          <button className="btn btn-o btn-xs" onClick={onClose}>✕</button>
+          <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {editingDept ? <Edit2 size={16} /> : <Plus size={16} />}
+            <span>{editingDept ? 'Edit Department' : 'Add New Department'}</span>
+          </h3>
+          <button className="btn btn-o btn-xs" onClick={onClose}>
+            <X size={12} />
+          </button>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -486,14 +627,18 @@ export const DeptModal: React.FC<DeptModalProps> = ({ onClose, onSave, editingDe
               type="button"
               className="btn btn-o btn-xs"
               onClick={() => setShowZoneOverrides(!showZoneOverrides)}
-              style={{ marginBottom: '12px' }}
+              style={{ marginBottom: '12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
             >
-              {showZoneOverrides ? '▼ Hide Zone-Specific Contacts' : '► Configure Zone-Specific SPOCs & HODs (Chennai / CBE / BLR)'}
+              {showZoneOverrides ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+              <span>{showZoneOverrides ? 'Hide Zone-Specific Contacts' : 'Configure Zone-Specific SPOCs & HODs (Chennai / CBE / BLR)'}</span>
             </button>
 
             {showZoneOverrides && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'var(--surface2)', padding: '12px', borderRadius: '8px' }}>
-                <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink)' }}>📍 Zone Specific Overrides</div>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <MapPin size={13} />
+                  <span>Zone Specific Overrides</span>
+                </div>
                 
                 {/* Chennai */}
                 <div style={{ background: '#fff', padding: '10px', borderRadius: '6px', border: '1px solid var(--border)' }}>
@@ -533,7 +678,10 @@ export const DeptModal: React.FC<DeptModalProps> = ({ onClose, onSave, editingDe
 
           <div className="brow">
             <button type="button" className="btn btn-o" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-r">💾 Save Department</button>
+            <button type="submit" className="btn btn-r" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+              <Save size={14} />
+              <span>Save Department</span>
+            </button>
           </div>
         </form>
       </div>
@@ -573,15 +721,15 @@ export const ImportModal: React.FC<ImportModalProps> = ({ onClose, onImport, onT
           .filter(d => d.ref && d.dept);
 
         if (parsed.length === 0) {
-          onToast('❌ No valid department rows found in CSV/Excel.');
+          onToast('No valid department rows found in CSV/Excel.');
           return;
         }
 
         await onImport(parsed);
-        onToast(`✅ Imported ${parsed.length} department(s) successfully!`);
+        onToast(`Imported ${parsed.length} department(s) successfully!`);
         onClose();
       } catch (err: any) {
-        onToast(`❌ Import error: ${err.message}`);
+        onToast(`Import error: ${err.message}`);
       }
     };
     reader.readAsArrayBuffer(file);
@@ -591,8 +739,13 @@ export const ImportModal: React.FC<ImportModalProps> = ({ onClose, onImport, onT
     <div className="modal-overlay">
       <div className="modal">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h3>⬆ Import Departments (CSV / Excel)</h3>
-          <button className="btn btn-o btn-xs" onClick={onClose}>✕</button>
+          <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Upload size={16} />
+            <span>Import Departments (CSV / Excel)</span>
+          </h3>
+          <button className="btn btn-o btn-xs" onClick={onClose}>
+            <X size={12} />
+          </button>
         </div>
 
         <p style={{ fontSize: '12.5px', color: 'var(--muted)', marginBottom: '14px' }}>
@@ -609,8 +762,9 @@ export const ImportModal: React.FC<ImportModalProps> = ({ onClose, onImport, onT
 
         <div className="brow">
           <button type="button" className="btn btn-o" onClick={onClose}>Cancel</button>
-          <button type="button" className="btn btn-b" onClick={handleFile} disabled={!file}>
-            ⬆ Process Import
+          <button type="button" className="btn btn-b" onClick={handleFile} disabled={!file} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+            <Upload size={14} />
+            <span>Process Import</span>
           </button>
         </div>
       </div>
@@ -681,8 +835,13 @@ export const UserModal: React.FC<UserModalProps> = ({ onClose, onSave, depts, ed
     <div className="modal-overlay">
       <div className="modal" style={{ maxWidth: '580px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h3>{editingUser ? '✏ Edit User & Rules' : '+ Add New User'}</h3>
-          <button className="btn btn-o btn-xs" onClick={onClose}>✕</button>
+          <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {editingUser ? <Edit2 size={16} /> : <Plus size={16} />}
+            <span>{editingUser ? 'Edit User & Rules' : 'Add New User'}</span>
+          </h3>
+          <button className="btn btn-o btn-xs" onClick={onClose}>
+            <X size={12} />
+          </button>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -770,7 +929,10 @@ export const UserModal: React.FC<UserModalProps> = ({ onClose, onSave, depts, ed
                   onChange={e => setActive(e.target.checked)}
                   style={{ width: '18px', height: '18px' }}
                 />
-                {active ? '🟢 Active Account' : '🔴 Account Suspended / Inactive'}
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: active ? '#10b981' : '#ef4444' }} />
+                  {active ? 'Active Account' : 'Account Suspended / Inactive'}
+                </span>
               </label>
             </div>
           </div>
@@ -802,7 +964,10 @@ export const UserModal: React.FC<UserModalProps> = ({ onClose, onSave, depts, ed
 
           <div className="brow">
             <button type="button" className="btn btn-o" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-r">💾 Save User Rules</button>
+            <button type="submit" className="btn btn-r" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+              <Save size={14} />
+              <span>Save User Rules</span>
+            </button>
           </div>
         </form>
       </div>

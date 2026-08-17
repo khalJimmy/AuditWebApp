@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AuditTask, AuditReport } from '../types';
 import * as XLSX from 'xlsx';
+import { Download, AlertTriangle, Clock, Check, Bell, FileEdit, CheckCircle2 } from 'lucide-react';
 
 interface TrackerViewProps {
   tasks: AuditTask[];
@@ -76,7 +77,7 @@ export const TrackerView: React.FC<TrackerViewProps> = ({
     const ws = XLSX.utils.json_to_sheet(data);
     XLSX.utils.book_append_sheet(wb, ws, 'TAT Tracker');
     XLSX.writeFile(wb, `TAT_Tracker_${new Date().toISOString().split('T')[0]}.xlsx`);
-    onToast('✅ Exported TAT tracker to Excel');
+    onToast('Exported TAT tracker to Excel');
   };
 
   return (
@@ -88,8 +89,9 @@ export const TrackerView: React.FC<TrackerViewProps> = ({
           </div>
           <div className="ps">72-hour corrective action deadline monitor</div>
         </div>
-        <button className="btn btn-o btn-sm" onClick={exportExcel}>
-          ⬇ Export
+        <button className="btn btn-o btn-sm" onClick={exportExcel} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+          <Download size={13} />
+          <span>Export</span>
         </button>
       </div>
 
@@ -155,8 +157,9 @@ export const TrackerView: React.FC<TrackerViewProps> = ({
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span className={`tat ${tatBadgeCls}`}>
-                        {st === 'Delayed' ? '⚠' : st === 'Response Pending' ? '⏳' : '✓'} {st}
+                      <span className={`tat ${tatBadgeCls}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                        {st === 'Delayed' ? <AlertTriangle size={11} /> : st === 'Response Pending' ? <Clock size={11} /> : <Check size={11} />}
+                        <span>{st}</span>
                       </span>
                       <strong>{t.taskId}</strong>
                       <span style={{ fontSize: '12px', color: 'var(--muted)' }}>→ {t.fn}</span>
@@ -185,19 +188,22 @@ export const TrackerView: React.FC<TrackerViewProps> = ({
 
                   {(st === 'Delayed' || st === 'Response Pending' || st === 'Notified') && (
                     <div className="brow" style={{ marginTop: '8px' }}>
-                      <button className="btn btn-o btn-xs" onClick={() => onSendReminder(t.taskId)}>
-                        🔔 Send Reminder
+                      <button className="btn btn-o btn-xs" onClick={() => onSendReminder(t.taskId)} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <Bell size={12} />
+                        <span>Send Reminder</span>
                       </button>
-                      <button className="btn btn-b btn-xs" onClick={() => onOpenResponseModal(t.auditId)}>
-                        📝 Enter Response
+                      <button className="btn btn-b btn-xs" onClick={() => onOpenResponseModal(t.auditId)} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <FileEdit size={12} />
+                        <span>Enter Response</span>
                       </button>
                     </div>
                   )}
 
                   {st === 'Completed' && (
                     <div className="brow" style={{ marginTop: '8px' }}>
-                      <button className="btn btn-g btn-xs" onClick={() => onCloseTask(t.taskId)}>
-                        ✅ Close Task
+                      <button className="btn btn-g btn-xs" onClick={() => onCloseTask(t.taskId)} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <CheckCircle2 size={12} />
+                        <span>Close Task</span>
                       </button>
                     </div>
                   )}

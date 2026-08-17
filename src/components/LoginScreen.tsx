@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { getSupabaseConfigStatus } from '../lib/supabase';
+import { AlertCircle, ArrowRight, Shield, Search, FileText, Mail } from 'lucide-react';
 
 interface LoginScreenProps {
   onLogin: (username: string, pw: string) => Promise<any>;
@@ -27,8 +28,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, errorMessage,
     setLoading(true);
     try {
       await onLogin(identifier.trim(), password);
+      // Ensure smooth delay for background data sync before unmounting
+      await new Promise(r => setTimeout(r, 450));
     } catch (error: any) {
-      setErr(error.message || 'Login failed. Please check your credentials.');
+      setErr(error.message || 'Login failed. Please verify your credentials.');
     } finally {
       setLoading(false);
     }
@@ -58,27 +61,49 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, errorMessage,
           </div>
         </div>
 
-        {/* SUPABASE STATUS BADGE */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          background: configStatus.configured ? '#ecfdf5' : '#fffbeb',
-          border: `1px solid ${configStatus.configured ? '#a7f3d0' : '#fde68a'}`,
-          borderRadius: '6px',
-          padding: '6px 10px',
-          fontSize: '11px',
-          color: configStatus.configured ? '#065f46' : '#92400e',
-          marginBottom: '14px'
-        }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <span style={{ fontSize: '12px' }}>{configStatus.configured ? '⚡' : '⚠️'}</span>
-            <strong>Supabase Auth:</strong> {configStatus.configured ? 'Connected' : 'Configuration Pending'}
-          </span>
-          <span style={{ fontFamily: 'monospace', fontSize: '10px', color: '#64748b' }}>
-            {configStatus.urlHost}
-          </span>
-        </div>
+        {/* DB STATUS INDICATOR */}
+        {configStatus.configured ? (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            fontSize: '11px',
+            color: '#10b981',
+            marginBottom: '14px',
+            fontWeight: 500
+          }}>
+            <span style={{
+              width: '7px',
+              height: '7px',
+              borderRadius: '50%',
+              backgroundColor: '#10b981',
+              display: 'inline-block',
+              boxShadow: '0 0 6px rgba(16, 185, 129, 0.6)'
+            }} />
+            <span>Connected</span>
+          </div>
+        ) : (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            fontSize: '11px',
+            color: '#f59e0b',
+            marginBottom: '14px',
+            fontWeight: 500
+          }}>
+            <span style={{
+              width: '7px',
+              height: '7px',
+              borderRadius: '50%',
+              backgroundColor: '#f59e0b',
+              display: 'inline-block'
+            }} />
+            <span>Configuration Pending</span>
+          </div>
+        )}
 
         {/* FORM */}
         <form onSubmit={handleSubmit}>
@@ -108,8 +133,32 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, errorMessage,
 
           {/* ERROR OR SUCCESS MESSAGE */}
           {(err || errorMessage) && (
-            <div className="lerr" style={{ display: 'block', marginBottom: '10px' }}>
-              {err || errorMessage}
+            <div className="lerr" style={{ display: 'block', marginBottom: '14px', lineHeight: '1.45' }}>
+              <div style={{ fontWeight: 600, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <AlertCircle size={15} style={{ flexShrink: 0 }} />
+                <span>{err || errorMessage}</span>
+              </div>
+              <div style={{ fontSize: '11px', marginTop: '6px', color: '#fca5a5', borderTop: '1px solid rgba(239, 68, 68, 0.25)', paddingTop: '6px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Mail size={12} style={{ flexShrink: 0 }} />
+                  <span>Unauthenticated? Please contact our team to request portal access:</span>
+                </div>
+                <div style={{ paddingLeft: '17px' }}>
+                  <a
+                    href="mailto:audit@casagrand.co.in?subject=Casagrand%20Portal%20Access%20Request"
+                    style={{ color: '#ffffff', textDecoration: 'underline', fontWeight: 600 }}
+                  >
+                    audit@casagrand.co.in
+                  </a>
+                  {' · '}
+                  <a
+                    href="mailto:sfjimelliot@gmail.com?subject=Casagrand%20Audit%20Support"
+                    style={{ color: '#ffffff', textDecoration: 'underline', fontWeight: 600 }}
+                  >
+                    sfjimelliot@gmail.com
+                  </a>
+                </div>
+              </div>
             </div>
           )}
 
@@ -141,8 +190,53 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, errorMessage,
             </div>
           )}
 
-          <button type="submit" className="lbtn" disabled={loading} style={{ cursor: loading ? 'not-allowed' : 'pointer' }}>
-            {loading ? 'Authenticating with Supabase...' : 'Sign In with Supabase →'}
+          <button
+            type="submit"
+            className="lbtn"
+            disabled={loading}
+            style={{
+              cursor: loading ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              transition: 'all 0.2s ease',
+              opacity: loading ? 0.85 : 1
+            }}
+          >
+            {loading ? (
+              <>
+                <svg
+                  className="animate-spin"
+                  style={{ width: '16px', height: '16px' }}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeDasharray="30"
+                    strokeLinecap="round"
+                    style={{ opacity: 0.3 }}
+                  />
+                  <path
+                    d="M12 2a10 10 0 0 1 10 10"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <span>Signing In...</span>
+              </>
+            ) : (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <span>Sign In</span>
+                <ArrowRight size={14} />
+              </span>
+            )}
           </button>
         </form>
 
@@ -155,21 +249,24 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, errorMessage,
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11px' }}>
             <div 
               onClick={() => handleQuickFill('admin', 'Audit@2026')}
-              style={{ cursor: 'pointer', padding: '4px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}
+              style={{ cursor: 'pointer', padding: '5px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-              👑 <strong>Admin / Lead:</strong> <code>admin</code> or <code>admin@casagrand.co.in</code>
+              <Shield size={13} style={{ color: '#f59e0b', flexShrink: 0 }} />
+              <div><strong>Admin / Lead:</strong> <code>admin</code> or <code>admin@casagrand.co.in</code></div>
             </div>
             <div 
               onClick={() => handleQuickFill('auditor1', 'Audit@2026')}
-              style={{ cursor: 'pointer', padding: '4px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}
+              style={{ cursor: 'pointer', padding: '5px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-              🔍 <strong>Auditor (Chennai):</strong> <code>auditor1</code> or <code>auditor1@casagrand.co.in</code>
+              <Search size={13} style={{ color: '#38bdf8', flexShrink: 0 }} />
+              <div><strong>Auditor (Chennai):</strong> <code>auditor1</code> or <code>auditor1@casagrand.co.in</code></div>
             </div>
             <div 
               onClick={() => handleQuickFill('spoc.mis', 'Spoc@2026')}
-              style={{ cursor: 'pointer', padding: '4px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}
+              style={{ cursor: 'pointer', padding: '5px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-              📋 <strong>SPOC (MIS):</strong> <code>spoc.mis</code> or <code>spoc.mis@casagrand.co.in</code>
+              <FileText size={13} style={{ color: '#10b981', flexShrink: 0 }} />
+              <div><strong>SPOC (MIS):</strong> <code>spoc.mis</code> or <code>spoc.mis@casagrand.co.in</code></div>
             </div>
           </div>
         </div>

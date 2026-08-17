@@ -1,5 +1,6 @@
 import React from 'react';
 import { AuditReport, AuditTask } from '../types';
+import { Send, FileEdit, CheckCircle2, Bell } from 'lucide-react';
 
 interface DispatchViewProps {
   audits: AuditReport[];
@@ -45,7 +46,7 @@ export const DispatchView: React.FC<DispatchViewProps> = ({
       </div>
 
       <div className="alert ai">
-        📧 Select a submitted audit → Click Dispatch → System generates email notification and starts TAT clock via REST API.
+        Select a submitted audit → Click Dispatch → System generates email notification and starts TAT clock via REST API.
       </div>
 
       <div className="card">
@@ -114,35 +115,40 @@ export const DispatchView: React.FC<DispatchViewProps> = ({
                           <button
                             className="btn btn-r btn-xs"
                             onClick={() => onOpenDispatchModal(a.auditId)}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}
                           >
-                            📤 Dispatch
+                            <Send size={11} />
+                            <span>Dispatch</span>
                           </button>
                         )}
                         {dispatched && st !== 'Closed' && (
                           <button
                             className="btn btn-b btn-xs"
-                            style={{ marginLeft: '4px' }}
+                            style={{ marginLeft: '4px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
                             onClick={() => onOpenResponseModal(a.auditId)}
                           >
-                            📝 Enter Response
+                            <FileEdit size={11} />
+                            <span>Enter Response</span>
                           </button>
                         )}
                         {dispatched && (st === 'Completed' || st === 'Response Pending') && (
                           <button
                             className="btn btn-g btn-xs"
-                            style={{ marginLeft: '4px' }}
-                            onClick={() => onCloseTask(task!.taskId)}
+                            style={{ marginLeft: '4px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                            onClick={() => onCloseTask && onCloseTask(task!.taskId)}
                           >
-                            ✅ Close
+                            <CheckCircle2 size={11} />
+                            <span>Close</span>
                           </button>
                         )}
                         {dispatched && st === 'Delayed' && (
                           <button
                             className="btn btn-o btn-xs"
-                            style={{ marginLeft: '4px' }}
-                            onClick={() => onSendReminder(task!.taskId)}
+                            style={{ marginLeft: '4px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                            onClick={() => onSendReminder && onSendReminder(task!.taskId)}
                           >
-                            🔔 Remind
+                            <Bell size={11} />
+                            <span>Remind</span>
                           </button>
                         )}
                       </td>

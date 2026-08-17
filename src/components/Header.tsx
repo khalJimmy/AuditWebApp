@@ -1,5 +1,18 @@
 import React from 'react';
 import { User } from '../types';
+import {
+  LayoutDashboard,
+  Calendar,
+  FileEdit,
+  Send,
+  Clock,
+  FolderArchive,
+  CheckSquare,
+  Building2,
+  Users,
+  Settings,
+  LogOut
+} from 'lucide-react';
 
 interface HeaderProps {
   currentUser?: User | null;
@@ -17,17 +30,22 @@ const NAVMAP: Record<string, string[]> = {
   hod: ['dash', 'tracker', 'records']
 };
 
-const NAVLABELS: Record<string, string> = {
-  dash: '📊 Dashboard',
-  plan: '📅 Planner',
-  audit: '✍ Audit Form',
-  dispatch: '📤 Dispatch',
-  tracker: '🔔 TAT Tracker',
-  records: '📁 Records',
-  spoc: '📋 My Actions',
-  depts: '🏢 Departments',
-  users: '👥 Users',
-  settings: '⚙ Settings'
+interface NavItemConfig {
+  label: string;
+  icon: React.ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }>;
+}
+
+const NAV_ITEMS: Record<string, NavItemConfig> = {
+  dash: { label: 'Dashboard', icon: LayoutDashboard },
+  plan: { label: 'Planner', icon: Calendar },
+  audit: { label: 'Audit Form', icon: FileEdit },
+  dispatch: { label: 'Dispatch', icon: Send },
+  tracker: { label: 'TAT Tracker', icon: Clock },
+  records: { label: 'Records', icon: FolderArchive },
+  spoc: { label: 'My Actions', icon: CheckSquare },
+  depts: { label: 'Departments', icon: Building2 },
+  users: { label: 'Users', icon: Users },
+  settings: { label: 'Settings', icon: Settings }
 };
 
 export const Header: React.FC<HeaderProps> = ({
@@ -78,15 +96,21 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         <nav className="hdr-nav">
-          {allowedTabs.map(tab => (
-            <button
-              key={tab}
-              className={`nb ${activeTab === tab ? 'on' : ''}`}
-              onClick={() => handleTabSelect(tab)}
-            >
-              {NAVLABELS[tab] || tab}
-            </button>
-          ))}
+          {allowedTabs.map(tab => {
+            const item = NAV_ITEMS[tab];
+            const IconComponent = item ? item.icon : null;
+            return (
+              <button
+                key={tab}
+                className={`nb ${activeTab === tab ? 'on' : ''}`}
+                onClick={() => handleTabSelect(tab)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                {IconComponent && <IconComponent size={14} style={{ opacity: 0.85 }} />}
+                <span>{item ? item.label : tab}</span>
+              </button>
+            );
+          })}
         </nav>
 
         <div className="hdr-right">
@@ -101,8 +125,9 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             </div>
           </div>
-          <button className="signout" onClick={onLogout}>
-            Sign Out
+          <button className="signout" onClick={onLogout} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+            <LogOut size={13} />
+            <span>Sign Out</span>
           </button>
         </div>
       </div>

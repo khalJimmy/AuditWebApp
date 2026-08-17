@@ -1,6 +1,7 @@
-import { User, Department, AuditReport, PlanItem, AuditTask, Settings } from '../types';
+import { User, Department, AuditReport, PlanItem, AuditTask, Settings, SmtpServerConfig, EmailAttachment } from '../types';
 import { DepartmentModel } from '../models/DepartmentModel';
 import { supabase } from '../lib/supabase';
+import { requestDeduplicator } from '../utils/throttle';
 
 export class ApiError extends Error {
   status: number;
@@ -41,7 +42,7 @@ async function getAccessToken(): Promise<string | null> {
   return null;
 }
 
-async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+async function executeFetch<T>(endpoint: string, options: RequestInit = {}, retries = 1): Promise<T> {
   const token = await getAccessToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -57,6 +58,11 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
+      // Handle rate limit (429) or transient server error (503) with backoff retry
+      if ((res.status === 429 || res.status === 503) && retries > 0) {
+        await new Promise(r => setTimeout(r, 600));
+        return executeFetch<T>(endpoint, options, retries - 1);
+      }
       throw new ApiError(data.error || `HTTP ${res.status}: Failed request to ${endpoint}`, res.status);
     }
 
@@ -65,8 +71,23 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     if (err instanceof ApiError) {
       throw err;
     }
+    if (retries > 0) {
+      await new Promise(r => setTimeout(r, 500));
+      return executeFetch<T>(endpoint, options, retries - 1);
+    }
     throw new ApiError(err.message || 'Network request failed. Please check your connection.', 0);
   }
+}
+
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const method = (options.method || 'GET').toUpperCase();
+  
+  // Coalesce concurrent in-flight GET requests to the same endpoint
+  if (method === 'GET') {
+    return requestDeduplicator.execute(endpoint, () => executeFetch<T>(endpoint, options));
+  }
+
+  return executeFetch<T>(endpoint, options);
 }
 
 export const api = {
@@ -145,11 +166,31 @@ export const api = {
   getTaskByToken: (token: string) =>
     request<AuditTask>(`/api/tasks/token/${token}`),
 
-  dispatchAudit: (auditId: string, spocMail?: string, hodMail?: string) =>
-    request<{ success: boolean; task: AuditTask }>('/api/dispatch', {
+  dispatchAudit: (params: {
+    auditId: string;
+    spocMail?: string;
+    hodMail?: string;
+    smtpServerId?: string;
+    attachments?: EmailAttachment[];
+    includeAttachment?: boolean;
+  } | string, spocMail?: string, hodMail?: string) => {
+    const payload = typeof params === 'string'
+      ? { auditId: params, spocMail, hodMail }
+      : params;
+
+    return request<{
+      success: boolean;
+      task: AuditTask;
+      emailDispatched?: boolean;
+      realEmailDelivered?: boolean;
+      simulated?: boolean;
+      serverName?: string;
+      messageId?: string;
+    }>('/api/dispatch', {
       method: 'POST',
-      body: JSON.stringify({ auditId, spocMail, hodMail })
-    }),
+      body: JSON.stringify(payload)
+    });
+  },
 
   submitResponse: (params: { taskId?: string; token?: string; responses: Record<string, any> }) =>
     request<{ success: boolean; task: AuditTask }>('/api/response', {
@@ -165,6 +206,51 @@ export const api = {
   closeTask: (taskId: string) =>
     request<{ success: boolean; task: AuditTask }>(`/api/tasks/${taskId}/close`, {
       method: 'POST'
+    }),
+
+  // SMTP & Email Sending
+  testSmtpConnection: (smtpConfig: SmtpServerConfig, testRecipient?: string) =>
+    request<{ success: boolean; message: string; messageId?: string; verifiedAt?: string }>('/api/email/test-smtp', {
+      method: 'POST',
+      body: JSON.stringify({ smtpConfig, testRecipient })
+    }),
+
+  sendEmail: (params: {
+    serverId?: string;
+    to: string;
+    cc?: string;
+    bcc?: string;
+    subject: string;
+    html: string;
+    text?: string;
+    attachments?: EmailAttachment[];
+  }) =>
+    request<{ success: boolean; simulated?: boolean; serverName?: string; messageId?: string }>('/api/email/send', {
+      method: 'POST',
+      body: JSON.stringify(params)
+    }),
+
+  sendTestEmail: (params: {
+    templateType?: string;
+    recipientEmail?: string;
+    hodEmail?: string;
+    data?: any;
+    html?: string;
+    serverId?: string;
+    attachments?: EmailAttachment[];
+  }) =>
+    request<{
+      success: boolean;
+      docId?: string;
+      realEmailDelivered?: boolean;
+      simulated?: boolean;
+      serverName?: string;
+      messageId?: string;
+      recipientEmail?: string;
+      hodEmail?: string;
+    }>('/api/email/send-test', {
+      method: 'POST',
+      body: JSON.stringify(params)
     }),
 
   // Settings

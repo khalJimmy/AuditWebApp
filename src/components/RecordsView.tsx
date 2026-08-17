@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AuditReport, AuditTask } from '../types';
 import * as XLSX from 'xlsx';
+import { Download, Eye } from 'lucide-react';
 
 interface RecordsViewProps {
   audits: AuditReport[];
@@ -77,7 +78,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ audits, tasks, onToast
   </div>
   <h2>Findings (${a.findings.length} total)</h2>
   <table><thead><tr><th>#</th><th>Type</th><th>Process</th><th>Description</th><th>Evidence</th><th>Immediate Action / Mitigation</th><th>Root Cause</th><th>CAPA</th><th>Due Date</th><th>Responsible</th></tr></thead><tbody>${rows}</tbody></table>
-  <button onclick="window.print()" style="margin-top:16px;padding:8px 20px;background:#c8401a;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;">🖨 Print / Save PDF</button>
+  <button onclick="window.print()" style="margin-top:16px;padding:8px 20px;background:#c8401a;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;">Print / Save PDF</button>
   </body></html>`);
     w.document.close();
   };
@@ -104,7 +105,7 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ audits, tasks, onToast
     const ws = XLSX.utils.json_to_sheet(data);
     XLSX.utils.book_append_sheet(wb, ws, 'Audit Records');
     XLSX.writeFile(wb, `Audit_Records_Archive_${new Date().toISOString().split('T')[0]}.xlsx`);
-    onToast('✅ Exported all records to Excel');
+    onToast('Exported all records to Excel');
   };
 
   return (
@@ -116,8 +117,9 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ audits, tasks, onToast
           </div>
           <div className="ps">Complete archive of all submitted audits</div>
         </div>
-        <button className="btn btn-b btn-sm" onClick={exportAll}>
-          ⬇ Export All
+        <button className="btn btn-b btn-sm" onClick={exportAll} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+          <Download size={13} />
+          <span>Export All</span>
         </button>
       </div>
 
@@ -207,8 +209,9 @@ export const RecordsView: React.FC<RecordsViewProps> = ({ audits, tasks, onToast
                         <span className={`badge ${stBadge}`}>{st}</span>
                       </td>
                       <td>
-                        <button className="btn btn-o btn-xs" onClick={() => previewRecord(a)}>
-                          👁 View
+                        <button className="btn btn-o btn-xs" onClick={() => previewRecord(a)} style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                          <Eye size={11} />
+                          <span>View</span>
                         </button>
                       </td>
                     </tr>
