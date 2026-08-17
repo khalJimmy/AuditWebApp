@@ -109,15 +109,43 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
     });
   };
 
-  const handleApplyPreset = (preset: 'gmail' | 'office365' | 'custom') => {
-    if (preset === 'gmail') {
+  const handleApplyPreset = (preset: 'gmail_tls' | 'gmail_ssl' | 'sendgrid' | 'brevo' | 'office365' | 'custom') => {
+    if (preset === 'gmail_tls') {
       setEditForm(prev => ({
         ...prev,
         provider: 'gmail',
         host: 'smtp.gmail.com',
         port: 587,
         secure: false,
-        name: prev.name.includes('Relay') ? 'Gmail / Google Workspace Relay' : prev.name
+        name: 'Gmail (Port 587 STARTTLS)'
+      }));
+    } else if (preset === 'gmail_ssl') {
+      setEditForm(prev => ({
+        ...prev,
+        provider: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
+        name: 'Gmail (Port 465 Direct SSL)'
+      }));
+    } else if (preset === 'sendgrid') {
+      setEditForm(prev => ({
+        ...prev,
+        provider: 'custom',
+        host: 'smtp.sendgrid.net',
+        port: 587,
+        secure: false,
+        name: 'SendGrid SMTP Relay',
+        user: 'apikey'
+      }));
+    } else if (preset === 'brevo') {
+      setEditForm(prev => ({
+        ...prev,
+        provider: 'custom',
+        host: 'smtp-relay.brevo.com',
+        port: 587,
+        secure: false,
+        name: 'Brevo (Sendinblue) Relay'
       }));
     } else if (preset === 'office365') {
       setEditForm(prev => ({
@@ -409,14 +437,39 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
               {isAddingNew ? <Plus size={14} /> : <Edit3 size={14} />}
               {isAddingNew ? 'Add New SMTP Server Configuration' : `Edit Server: ${editForm.name}`}
             </div>
-            <div style={{ display: 'flex', gap: '6px' }}>
+            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '11px', color: 'var(--muted)', alignSelf: 'center' }}>Presets:</span>
               <button
                 type="button"
-                className={`btn btn-xs ${editForm.provider === 'gmail' ? 'btn-r' : 'btn-o'}`}
-                onClick={() => handleApplyPreset('gmail')}
+                className={`btn btn-xs ${editForm.provider === 'gmail' && editForm.port === 587 ? 'btn-r' : 'btn-o'}`}
+                onClick={() => handleApplyPreset('gmail_tls')}
+                title="Google Gmail / Workspace STARTTLS"
               >
-                Gmail
+                Gmail 587
+              </button>
+              <button
+                type="button"
+                className={`btn btn-xs ${editForm.provider === 'gmail' && editForm.port === 465 ? 'btn-r' : 'btn-o'}`}
+                onClick={() => handleApplyPreset('gmail_ssl')}
+                title="Google Gmail / Workspace SSL"
+              >
+                Gmail 465
+              </button>
+              <button
+                type="button"
+                className={`btn btn-xs ${editForm.host.includes('brevo') ? 'btn-r' : 'btn-o'}`}
+                onClick={() => handleApplyPreset('brevo')}
+                title="Brevo / Sendinblue Relay"
+              >
+                Brevo
+              </button>
+              <button
+                type="button"
+                className={`btn btn-xs ${editForm.host.includes('sendgrid') ? 'btn-r' : 'btn-o'}`}
+                onClick={() => handleApplyPreset('sendgrid')}
+                title="SendGrid API Relay"
+              >
+                SendGrid
               </button>
               <button
                 type="button"
@@ -427,7 +480,7 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
               </button>
               <button
                 type="button"
-                className={`btn btn-xs ${editForm.provider === 'custom' ? 'btn-r' : 'btn-o'}`}
+                className={`btn btn-xs ${editForm.provider === 'custom' && !editForm.host.includes('brevo') && !editForm.host.includes('sendgrid') ? 'btn-r' : 'btn-o'}`}
                 onClick={() => handleApplyPreset('custom')}
               >
                 Custom
@@ -639,22 +692,36 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
           <div
             style={{
               marginTop: '10px',
-              padding: '8px 12px',
+              padding: '12px 14px',
               borderRadius: '6px',
-              fontSize: '12px',
-              background: testResult.success ? 'var(--green-bg)' : 'var(--red-bg)',
-              color: testResult.success ? 'var(--green2)' : 'var(--red)',
+              fontSize: '12.5px',
+              background: testResult.success ? 'var(--green-bg)' : '#fef2f2',
+              color: testResult.success ? 'var(--green2)' : '#991b1b',
               border: `1px solid ${testResult.success ? '#a7f3d0' : '#fecaca'}`,
               display: 'flex',
-              alignItems: 'center',
+              flexDirection: 'column',
               gap: '6px'
             }}
           >
-            {testResult.success ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
-            <div>
-              <strong>{testResult.success ? 'Success: ' : 'Error: '}</strong>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
+              {testResult.success ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
+              <span>{testResult.success ? 'Verification Succeeded' : 'Verification Failed'}</span>
+            </div>
+            <div style={{ fontSize: '12px', lineHeight: '1.5' }}>
               {testResult.message}
             </div>
+
+            {!testResult.success && testResult.message.includes('Google rejected') && (
+              <div style={{ marginTop: '6px', padding: '8px 10px', background: '#fff', borderRadius: '4px', border: '1px solid #fee2e2', fontSize: '11.5px', color: '#7f1d1d' }}>
+                <strong>How to fix Gmail 535-5.7.8 error:</strong>
+                <ol style={{ margin: '4px 0 0 16px', padding: 0 }}>
+                  <li>Open <a href="https://myaccount.google.com/security" target="_blank" rel="noreferrer" style={{ color: 'var(--brand)', textDecoration: 'underline', fontWeight: 600 }}>Google Account Security</a> and verify <strong>2-Step Verification</strong> is ON.</li>
+                  <li>Open <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" style={{ color: 'var(--brand)', textDecoration: 'underline', fontWeight: 600 }}>Google App Passwords</a>.</li>
+                  <li>Enter app name <em>&ldquo;Casagrand Audit&rdquo;</em>, click <strong>Create</strong>, and copy the 16-character password (e.g. <code>abcd efgh ijkl mnop</code>).</li>
+                  <li>Click <strong>Edit</strong> on this server, paste the 16-character key, and click <strong>Save SMTP Configuration</strong>.</li>
+                </ol>
+              </div>
+            )}
           </div>
         )}
       </div>

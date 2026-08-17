@@ -582,20 +582,18 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
   // SMTP EMAIL TRANSPORTER & ATTACHMENT LOGIC
   // ==========================================
   function getSmtpConfig(customServerId?: string): SmtpServerConfig | null {
+    let cfg: SmtpServerConfig | null = null;
     if (customServerId && settings.smtpServers) {
-      const found = settings.smtpServers.find(s => s.id === customServerId);
-      if (found) return found;
+      cfg = settings.smtpServers.find(s => s.id === customServerId) || null;
     }
-    if (settings.activeSmtpServerId && settings.smtpServers) {
-      const active = settings.smtpServers.find(s => s.id === settings.activeSmtpServerId);
-      if (active) return active;
+    if (!cfg && settings.activeSmtpServerId && settings.smtpServers) {
+      cfg = settings.smtpServers.find(s => s.id === settings.activeSmtpServerId) || null;
     }
-    if (settings.smtpServers && settings.smtpServers.length > 0) {
-      const def = settings.smtpServers.find(s => s.isDefault) || settings.smtpServers[0];
-      return def;
+    if (!cfg && settings.smtpServers && settings.smtpServers.length > 0) {
+      cfg = settings.smtpServers.find(s => s.isDefault) || settings.smtpServers[0];
     }
-    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-      return {
+    if (!cfg && process.env.SMTP_USER) {
+      cfg = {
         id: 'env_smtp',
         name: 'Environment SMTP Relay',
         provider: (process.env.SMTP_PROVIDER as any) || 'gmail',
@@ -603,41 +601,69 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
         port: Number(process.env.SMTP_PORT) || 587,
         secure: process.env.SMTP_SECURE === 'true',
         user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
+        pass: process.env.SMTP_PASS || '',
         fromName: process.env.SMTP_FROM_NAME || 'Casagrand Quality Audit',
         fromEmail: process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER,
         isDefault: true
       };
     }
-    return null;
+
+    // If server config pass is empty but process.env.SMTP_PASS exists, fallback to env variable
+    if (cfg && !cfg.pass && process.env.SMTP_PASS) {
+      cfg = {
+        ...cfg,
+        pass: process.env.SMTP_PASS,
+        user: cfg.user || process.env.SMTP_USER || ''
+      };
+    }
+
+    return cfg;
   }
 
-  function createTransporter(cfg: SmtpServerConfig) {
-    const cleanPass = (cfg.pass || '').replace(/\s+/g, '');
+  function createTransporter(cfg: SmtpServerConfig, forcePort?: number, useServiceShortcut = false) {
+    const cleanPass = (cfg.pass || '').replace(/[\s\u00A0\u200B-\u200D\uFEFF'"]/g, '').trim();
     const cleanUser = (cfg.user || '').trim();
+    const isGmail = cfg.provider === 'gmail' || (cfg.host && cfg.host.toLowerCase().includes('gmail.com'));
 
-    if (cfg.provider === 'gmail' || cfg.host?.toLowerCase().includes('gmail.com')) {
+    if (isGmail && useServiceShortcut) {
       return nodemailer.createTransport({
         service: 'gmail',
         auth: {
           user: cleanUser,
           pass: cleanPass
+        },
+        tls: {
+          rejectUnauthorized: false
         }
       });
     }
 
-    return nodemailer.createTransport({
-      host: cfg.host?.trim() || 'smtp.gmail.com',
-      port: Number(cfg.port) || 587,
-      secure: cfg.secure ?? (Number(cfg.port) === 465),
+    const port = forcePort || Number(cfg.port) || (isGmail ? (cfg.secure ? 465 : 587) : 587);
+    const isSecure = cfg.secure ?? (port === 465);
+
+    const transportOptions: any = {
+      host: isGmail ? 'smtp.gmail.com' : (cfg.host?.trim() || 'smtp.gmail.com'),
+      port: port,
+      secure: isSecure,
       auth: {
         user: cleanUser,
         pass: cleanPass
       },
+      family: 4, // Explicit IPv4 to prevent IPv6 hanging/timeouts in cloud container environments
+      connectionTimeout: 10000,
+      greetingTimeout: 8000,
+      socketTimeout: 12000,
       tls: {
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
+        minVersion: 'TLSv1.2'
       }
-    });
+    };
+
+    if (isGmail && port === 587) {
+      transportOptions.requireTLS = true;
+    }
+
+    return nodemailer.createTransport(transportOptions);
   }
 
   async function sendOutboundMail(params: {
@@ -898,8 +924,41 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
         return;
       }
 
-      const transporter = createTransporter(smtpConfig);
-      await transporter.verify();
+      let transporter = createTransporter(smtpConfig);
+      let verifyErr: any = null;
+      const isGmail = smtpConfig.provider === 'gmail' || (smtpConfig.host && smtpConfig.host.toLowerCase().includes('gmail.com'));
+
+      // Attempt 1: primary configuration
+      try {
+        await transporter.verify();
+      } catch (err: any) {
+        verifyErr = err;
+        // Attempt 2: Try alternate port (465 vs 587)
+        if (isGmail && (err.code === 'ETIMEDOUT' || err.code === 'ECONNREFUSED' || err.code === 'ESOCKET' || err.code === 'ENETUNREACH')) {
+          const altPort = Number(smtpConfig.port) === 465 ? 587 : 465;
+          console.warn(`[SMTP RETRY] Port ${smtpConfig.port} failed (${err.code}). Trying fallback port ${altPort}...`);
+          try {
+            transporter = createTransporter(smtpConfig, altPort);
+            await transporter.verify();
+            verifyErr = null; // Succeeded on alternative port
+          } catch (retryErr: any) {
+            verifyErr = retryErr;
+            // Attempt 3: Try nodemailer 'gmail' built-in service definition
+            try {
+              console.warn(`[SMTP RETRY] Trying nodemailer service: 'gmail' shortcut...`);
+              transporter = createTransporter(smtpConfig, undefined, true);
+              await transporter.verify();
+              verifyErr = null;
+            } catch (svcErr: any) {
+              verifyErr = svcErr;
+            }
+          }
+        }
+      }
+
+      if (verifyErr) {
+        throw verifyErr;
+      }
 
       const recipient = testRecipient || smtpConfig.user;
       const testHtml = `
@@ -954,10 +1013,16 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
     } catch (err: any) {
       console.error('[SMTP VERIFY ERROR]:', err);
       let message = err.message || 'SMTP connection failed';
-      if (message.includes('Username and Password not accepted') || message.includes('BadCredentials') || message.includes('535-5.7.8')) {
-        message = 'Gmail rejected login credentials. Note: Gmail requires a 16-character App Password (not your normal Google account password). Go to Google Account > Security > 2-Step Verification > App Passwords to generate one.';
+      const rawMsg = (err.message || '') + ' ' + (err.response || '');
+
+      if (rawMsg.includes('Username and Password not accepted') || rawMsg.includes('BadCredentials') || rawMsg.includes('535-5.7.8') || rawMsg.includes('535 5.7.8') || err.code === 'EAUTH') {
+        message = 'Gmail Authentication Failed (535-5.7.8): Google rejected the App Password. Checklist: 1) Ensure "2-Step Verification" is ON at https://myaccount.google.com/security. 2) Generate a dedicated 16-character key at https://myaccount.google.com/apppasswords. 3) Ensure your sender email matches the Google account.';
+      } else if (err.code === 'ETIMEDOUT' || err.code === 'ECONNREFUSED' || err.code === 'ESOCKET' || err.code === 'ENETUNREACH') {
+        message = `Network Connection Timeout (${err.code || 'ETIMEDOUT'}): Direct outbound TCP connection to ${req.body?.smtpConfig?.host || 'smtp.gmail.com'}:${req.body?.smtpConfig?.port || 587} timed out. This occurs when local/cloud sandboxes restrict outbound SMTP ports. (Dispatches will use simulation fallback automatically when live relay is unreachable).`;
+      } else if (err.code === 'EAI_AGAIN' || err.code === 'ENOTFOUND') {
+        message = `DNS Resolution Failure (${err.code}): Could not resolve mail host "${req.body?.smtpConfig?.host}". Check host spelling.`;
       }
-      res.status(400).json({ error: message });
+      res.status(400).json({ error: message, code: err.code, details: err.message });
     }
   });
 
@@ -983,7 +1048,8 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 
       res.json(result);
     } catch (err: any) {
-      res.status(500).json({ error: err.message || 'Failed to send email' });
+      console.error('[OUTBOUND SEND ERROR]:', err);
+      res.status(400).json({ error: err.message || 'Failed to send outbound email' });
     }
   });
 
