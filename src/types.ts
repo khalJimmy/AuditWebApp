@@ -199,12 +199,29 @@ export interface SmtpServerConfig {
   fromName: string;
   fromEmail: string;
   isDefault?: boolean;
+  isEnvConfigured?: boolean;
   lastTestedAt?: string;
   status?: 'verified' | 'failed' | 'untested';
   testMessageId?: string;
 }
 
 export type EmailServerConfig = SmtpServerConfig;
+
+export interface EmailConnectionStatus {
+  connected: boolean;
+  provider: EmailProviderType;
+  hasEnvKey: boolean;
+  envSource: string;
+  apiKeyMasked?: string;
+  fromEmail: string;
+  fromName: string;
+  status: 'connected' | 'unconfigured' | 'error';
+  lastChecked?: string;
+  latencyMs?: number;
+  message?: string;
+  activeServerId?: string;
+  activeServerName?: string;
+}
 
 export interface EmailAttachment {
   filename: string;
@@ -223,6 +240,8 @@ export interface Settings {
   params?: { id: string; title: string; max: number }[];
   senderEmail?: string;
   resendApiKey?: string;
+  resendConfiguredFromEnv?: boolean;
+  resendFromEnv?: string;
   smtpServers?: SmtpServerConfig[];
   activeSmtpServerId?: string;
 }

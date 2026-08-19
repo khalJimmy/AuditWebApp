@@ -685,7 +685,58 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
   // ====================================================
   // EMAIL DELIVERY ENGINE (RESEND HTTPS API + SMTP RELAY)
   // ====================================================
+  function syncEnvironmentSettings() {
+    const envResendKey = (process.env.RESEND_API_KEY || '').trim();
+    const envResendFrom = (process.env.RESEND_FROM || '').trim();
+    const envSenderEmail = (process.env.SENDER_EMAIL || '').trim();
+
+    if (envSenderEmail && !settings.senderEmail) {
+      settings.senderEmail = envSenderEmail;
+    }
+
+    if (envResendKey) {
+      settings.resendApiKey = envResendKey;
+      settings.resendConfiguredFromEnv = true;
+      settings.resendFromEnv = envResendFrom || 'onboarding@resend.dev';
+
+      if (!settings.smtpServers) settings.smtpServers = [];
+
+      let resendServer = settings.smtpServers.find(s => s.provider === 'resend' || s.id === 'cfg_resend_default' || s.id === 'cfg_resend_env');
+      if (!resendServer) {
+        resendServer = {
+          id: 'cfg_resend_env',
+          name: 'Resend HTTPS API (Vercel Cloud)',
+          provider: 'resend',
+          apiKey: envResendKey,
+          fromName: 'Casagrand Quality & Process Audit',
+          fromEmail: envResendFrom || 'onboarding@resend.dev',
+          isDefault: true,
+          isEnvConfigured: true,
+          status: 'verified'
+        };
+        settings.smtpServers.unshift(resendServer);
+        settings.activeSmtpServerId = resendServer.id;
+      } else {
+        resendServer.apiKey = envResendKey;
+        resendServer.isEnvConfigured = true;
+        resendServer.status = 'verified';
+        if (envResendFrom) resendServer.fromEmail = envResendFrom;
+        if (!settings.activeSmtpServerId || settings.activeSmtpServerId === 'cfg_gmail_backup') {
+          settings.smtpServers.forEach(s => { s.isDefault = (s.id === resendServer!.id); });
+          resendServer.isDefault = true;
+          settings.activeSmtpServerId = resendServer.id;
+        }
+      }
+    } else {
+      settings.resendConfiguredFromEnv = false;
+    }
+  }
+
+  // Initial sync on startup
+  syncEnvironmentSettings();
+
   function getSmtpConfig(customServerId?: string): SmtpServerConfig | null {
+    syncEnvironmentSettings();
     let cfg: SmtpServerConfig | null = null;
     if (customServerId && settings.smtpServers) {
       cfg = settings.smtpServers.find(s => s.id === customServerId) || null;
@@ -701,12 +752,13 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
       if (resendKey) {
         cfg = {
           id: 'cfg_resend_env',
-          name: 'Resend HTTPS API (Cloud Production)',
+          name: 'Resend HTTPS API (Vercel Cloud)',
           provider: 'resend',
           apiKey: resendKey,
           fromName: 'Casagrand Quality & Process Audit',
           fromEmail: process.env.RESEND_FROM || 'onboarding@resend.dev',
           isDefault: true,
+          isEnvConfigured: true,
           status: 'verified'
         };
       }
@@ -1461,8 +1513,147 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
     }
   });
 
+  // EMAIL: Dynamic Connection Status Endpoint
+  app.get('/api/email/connection-status', async (_req: Request, res: Response) => {
+    try {
+      syncEnvironmentSettings();
+      const envKey = (process.env.RESEND_API_KEY || '').trim();
+      const activeCfg = getSmtpConfig();
+      const effectiveKey = (activeCfg?.apiKey || settings.resendApiKey || envKey || '').trim();
+      const isResend = activeCfg?.provider === 'resend' || Boolean(effectiveKey && !activeCfg?.host);
+
+      if (isResend && effectiveKey) {
+        const masked = effectiveKey.length > 8
+          ? `${effectiveKey.substring(0, 5)}••••••••${effectiveKey.substring(effectiveKey.length - 4)}`
+          : 're_••••••••';
+
+        res.json({
+          connected: true,
+          provider: 'resend',
+          hasEnvKey: Boolean(envKey),
+          envSource: envKey ? 'Vercel / Cloud Environment (RESEND_API_KEY)' : 'Stored Settings',
+          apiKeyMasked: masked,
+          fromEmail: activeCfg?.fromEmail || process.env.RESEND_FROM || 'onboarding@resend.dev',
+          fromName: activeCfg?.fromName || 'Casagrand Quality & Process Audit',
+          status: 'connected',
+          activeServerId: activeCfg?.id || 'cfg_resend_env',
+          activeServerName: activeCfg?.name || 'Resend HTTPS API',
+          lastChecked: new Date().toISOString(),
+          message: envKey
+            ? 'Connected to Resend API via Vercel Environment Variables.'
+            : 'Connected to Resend API via stored API Key configuration.'
+        });
+        return;
+      }
+
+      if (activeCfg && activeCfg.provider !== 'resend') {
+        res.json({
+          connected: Boolean(activeCfg.pass && activeCfg.user),
+          provider: activeCfg.provider,
+          hasEnvKey: false,
+          envSource: 'SMTP Relay',
+          apiKeyMasked: undefined,
+          fromEmail: activeCfg.fromEmail || activeCfg.user || '',
+          fromName: activeCfg.fromName || 'Casagrand Quality Audit',
+          status: activeCfg.pass ? 'connected' : 'unconfigured',
+          activeServerId: activeCfg.id,
+          activeServerName: activeCfg.name,
+          lastChecked: new Date().toISOString(),
+          message: `Using ${activeCfg.name} (${activeCfg.host}:${activeCfg.port})`
+        });
+        return;
+      }
+
+      res.json({
+        connected: false,
+        provider: 'resend',
+        hasEnvKey: false,
+        envSource: 'None detected',
+        fromEmail: 'onboarding@resend.dev',
+        fromName: 'Casagrand Quality & Process Audit',
+        status: 'unconfigured',
+        lastChecked: new Date().toISOString(),
+        message: 'No Resend API Key detected. Set RESEND_API_KEY in Vercel Environment Variables or enter it in Settings.'
+      });
+    } catch (err: any) {
+      res.status(500).json({
+        connected: false,
+        error: err.message,
+        status: 'error'
+      });
+    }
+  });
+
+  // EMAIL: Real-time Ping / Check Connection
+  app.post('/api/email/check-connection', async (req: Request, res: Response) => {
+    try {
+      syncEnvironmentSettings();
+      const { apiKey, serverId } = req.body || {};
+      const activeCfg = getSmtpConfig(serverId);
+      const targetKey = (apiKey || activeCfg?.apiKey || settings.resendApiKey || process.env.RESEND_API_KEY || '').trim();
+
+      if (!targetKey) {
+        res.status(400).json({
+          connected: false,
+          error: 'No Resend API Key available to test. Please set RESEND_API_KEY in Vercel or enter it in Settings.',
+          status: 'unconfigured'
+        });
+        return;
+      }
+
+      const startTime = Date.now();
+      const checkRes = await fetch('https://api.resend.com/api-keys', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${targetKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const latencyMs = Date.now() - startTime;
+      const data: any = await checkRes.json().catch(() => ({}));
+
+      if (checkRes.ok) {
+        const masked = targetKey.length > 8
+          ? `${targetKey.substring(0, 5)}••••••••${targetKey.substring(targetKey.length - 4)}`
+          : 're_••••••••';
+
+        res.json({
+          connected: true,
+          provider: 'resend',
+          hasEnvKey: Boolean(process.env.RESEND_API_KEY),
+          envSource: process.env.RESEND_API_KEY ? 'Vercel / Cloud Environment (RESEND_API_KEY)' : 'Application Settings',
+          apiKeyMasked: masked,
+          fromEmail: activeCfg?.fromEmail || process.env.RESEND_FROM || 'onboarding@resend.dev',
+          fromName: activeCfg?.fromName || 'Casagrand Quality & Process Audit',
+          status: 'connected',
+          latencyMs,
+          activeServerId: activeCfg?.id,
+          activeServerName: activeCfg?.name,
+          lastChecked: new Date().toISOString(),
+          message: `Resend API verified successfully (${latencyMs}ms latency). Authentication active.`
+        });
+      } else {
+        const rawErr = data.message || `Resend authentication failed (HTTP ${checkRes.status})`;
+        res.status(400).json({
+          connected: false,
+          error: rawErr.includes('restricted') ? 'API Key verified (Domain restriction check may apply during sending).' : rawErr,
+          status: 'error',
+          latencyMs
+        });
+      }
+    } catch (err: any) {
+      res.status(500).json({
+        connected: false,
+        error: `Connection check failed: ${err.message}`,
+        status: 'error'
+      });
+    }
+  });
+
   // SETTINGS: Get
   app.get('/api/settings', (_req: Request, res: Response) => {
+    syncEnvironmentSettings();
     res.json(settings);
   });
 
@@ -1470,6 +1661,7 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
   app.post('/api/settings', (req: Request, res: Response, next: NextFunction) => {
     try {
       settings = { ...settings, ...req.body };
+      syncEnvironmentSettings();
       res.json({ success: true, settings });
     } catch (err) {
       next(err);

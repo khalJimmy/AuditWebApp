@@ -1,4 +1,4 @@
-import { User, Department, AuditReport, PlanItem, AuditTask, Settings, SmtpServerConfig, EmailAttachment } from '../types';
+import { User, Department, AuditReport, PlanItem, AuditTask, Settings, SmtpServerConfig, EmailAttachment, EmailConnectionStatus } from '../types';
 import { DepartmentModel } from '../models/DepartmentModel';
 import { supabase } from '../lib/supabase';
 import { requestDeduplicator } from '../utils/throttle';
@@ -222,6 +222,15 @@ export const api = {
     }),
 
   // SMTP & Email Sending
+  getEmailConnectionStatus: () =>
+    request<EmailConnectionStatus>('/api/email/connection-status'),
+
+  checkEmailConnection: (params?: { apiKey?: string; serverId?: string }) =>
+    request<EmailConnectionStatus>('/api/email/check-connection', {
+      method: 'POST',
+      body: JSON.stringify(params || {})
+    }),
+
   testSmtpConnection: (smtpConfig: SmtpServerConfig, testRecipient?: string) =>
     request<{ success: boolean; message: string; messageId?: string; verifiedAt?: string }>('/api/email/test-smtp', {
       method: 'POST',

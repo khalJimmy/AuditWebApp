@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Settings, SmtpServerConfig, EmailProviderType } from '../types';
+import React, { useState, useEffect } from 'react';
+import { Settings, SmtpServerConfig, EmailProviderType, EmailConnectionStatus } from '../types';
 import { api } from '../services/api';
 import {
   Mail,
@@ -18,7 +18,10 @@ import {
   Star,
   ExternalLink,
   ShieldCheck,
-  Send
+  Send,
+  RefreshCw,
+  Activity,
+  Check
 } from 'lucide-react';
 
 interface SmtpSettingsCardProps {
@@ -75,6 +78,11 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showApiKeyHelp, setShowApiKeyHelp] = useState<boolean>(false);
 
+  // Connection Status State
+  const [connStatus, setConnStatus] = useState<EmailConnectionStatus | null>(null);
+  const [isLoadingStatus, setIsLoadingStatus] = useState<boolean>(false);
+  const [isCheckingPing, setIsCheckingPing] = useState<boolean>(false);
+
   // Edit / Add Form Buffer
   const [editForm, setEditForm] = useState<SmtpServerConfig>({
     id: 'cfg_resend_new',
@@ -93,6 +101,39 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
   const [testResult, setTestResult] = useState<{ success: boolean; message: string; messageId?: string; verifiedAt?: string } | null>(null);
 
   const activeServer = servers.find(s => s.id === selectedServerId) || servers.find(s => s.isDefault) || servers[0];
+
+  // Fetch connection status on mount and when settings change
+  const loadConnectionStatus = async () => {
+    try {
+      setIsLoadingStatus(true);
+      const res = await api.getEmailConnectionStatus();
+      setConnStatus(res);
+      if (settings.smtpServers && settings.smtpServers.length > 0) {
+        setServers(settings.smtpServers);
+      }
+    } catch (err: any) {
+      console.warn('Could not load email connection status:', err);
+    } finally {
+      setIsLoadingStatus(false);
+    }
+  };
+
+  useEffect(() => {
+    loadConnectionStatus();
+  }, [settings]);
+
+  const handlePingResend = async () => {
+    try {
+      setIsCheckingPing(true);
+      const res = await api.checkEmailConnection({ serverId: activeServer?.id });
+      setConnStatus(res);
+      onToast(res.message || 'Resend API authenticated successfully.');
+    } catch (err: any) {
+      onToast(`Connection check error: ${err.message}`);
+    } finally {
+      setIsCheckingPing(false);
+    }
+  };
 
   const handleStartEdit = (server: SmtpServerConfig) => {
     setIsAddingNew(false);
@@ -180,8 +221,8 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
     }
 
     if (editForm.provider === 'resend') {
-      if (!editForm.apiKey?.trim()) {
-        alert('Please provide your Resend API Key (starts with "re_").');
+      if (!editForm.apiKey?.trim() && !connStatus?.hasEnvKey && !settings.resendApiKey) {
+        alert('Please provide your Resend API Key (starts with "re_") or configure RESEND_API_KEY in Vercel.');
         return;
       }
     } else {
@@ -283,8 +324,8 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
       return;
     }
 
-    if (activeServer.provider === 'resend' && !activeServer.apiKey?.trim()) {
-      onToast('Please enter and save your Resend API Key (starts with "re_") first.');
+    if (activeServer.provider === 'resend' && !activeServer.apiKey?.trim() && !connStatus?.hasEnvKey && !settings.resendApiKey) {
+      onToast('Please enter and save your Resend API Key (starts with "re_") or add RESEND_API_KEY in Vercel first.');
       return;
     }
 
@@ -362,6 +403,144 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
         Configure the outbound delivery provider used for dispatching audit reports, CAPA notices, and 72-hour SLA reminders to SPOCs and HODs. <strong>Resend HTTPS API</strong> operates over standard port 443 with instant delivery and zero port restrictions.
       </p>
 
+      {/* VERCEL / CLOUD LIVE CONNECTION STATUS BANNER */}
+      <div
+        style={{
+          background: connStatus?.connected
+            ? 'linear-gradient(135deg, rgba(5, 150, 105, 0.08) 0%, rgba(16, 185, 129, 0.04) 100%)'
+            : 'linear-gradient(135deg, rgba(234, 88, 12, 0.08) 0%, rgba(245, 158, 11, 0.04) 100%)',
+          border: connStatus?.connected
+            ? '1px solid rgba(5, 150, 105, 0.35)'
+            : '1px solid rgba(234, 88, 12, 0.35)',
+          borderRadius: '8px',
+          padding: '16px 18px',
+          marginBottom: '18px'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '14px' }}>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+            <div
+              style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: '8px',
+                background: connStatus?.connected ? '#059669' : '#ea580c',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                boxShadow: connStatus?.connected ? '0 2px 8px rgba(5, 150, 105, 0.25)' : '0 2px 8px rgba(234, 88, 12, 0.25)'
+              }}
+            >
+              {isLoadingStatus ? (
+                <Loader2 size={19} className="animate-spin" />
+              ) : connStatus?.connected ? (
+                <CheckCircle2 size={19} />
+              ) : (
+                <AlertTriangle size={19} />
+              )}
+            </div>
+
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                <span style={{ fontWeight: 700, fontSize: '14.5px', color: 'var(--ink)' }}>
+                  {connStatus?.connected ? 'Resend API Connected' : 'Resend API Not Connected'}
+                </span>
+
+                {connStatus?.connected ? (
+                  <span
+                    className="badge bg"
+                    style={{
+                      fontSize: '11px',
+                      padding: '2px 8px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontWeight: 600
+                    }}
+                  >
+                    <ShieldCheck size={12} /> Active &amp; Verified
+                  </span>
+                ) : (
+                  <span
+                    className="badge by"
+                    style={{
+                      fontSize: '11px',
+                      padding: '2px 8px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <AlertTriangle size={12} /> Key Required
+                  </span>
+                )}
+
+                {connStatus?.hasEnvKey && (
+                  <span
+                    className="badge bb"
+                    style={{
+                      fontSize: '10.5px',
+                      padding: '2px 7px',
+                      fontWeight: 600
+                    }}
+                  >
+                    Vercel Environment Variable Detected
+                  </span>
+                )}
+              </div>
+
+              <div style={{ fontSize: '12.5px', color: 'var(--muted)', lineHeight: '1.5', maxWidth: '680px' }}>
+                {connStatus?.connected ? (
+                  <>
+                    Outbound email dispatch is authenticated via <strong>{connStatus.envSource}</strong>. Audit notices and CAPA reminders will route cleanly via HTTPS without SMTP socket timeouts.
+                    <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginTop: '6px', fontSize: '12px', color: 'var(--ink)' }}>
+                      <span><strong>Key:</strong> <code style={{ background: 'var(--surface2)', padding: '2px 6px', borderRadius: '4px', fontSize: '11.5px', fontFamily: 'monospace' }}>{connStatus.apiKeyMasked || 're_••••••••'}</code></span>
+                      <span><strong>Sender:</strong> <code style={{ background: 'var(--surface2)', padding: '2px 6px', borderRadius: '4px', fontSize: '11.5px', fontFamily: 'monospace' }}>{connStatus.fromEmail}</code></span>
+                      {connStatus.latencyMs !== undefined && (
+                        <span><strong>Latency:</strong> <span style={{ color: '#059669', fontWeight: 600 }}>{connStatus.latencyMs}ms</span></span>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    No <code>RESEND_API_KEY</code> detected in the active runtime. If you have added it to Vercel Project Settings, click <strong>"Check Connection"</strong> below or save your key in the form.
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Action buttons on the banner */}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn btn-g btn-xs"
+              onClick={handlePingResend}
+              disabled={isCheckingPing || isLoadingStatus}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 600 }}
+              title="Ping Resend HTTPS API to verify authentication and check latency"
+            >
+              {isCheckingPing ? <Loader2 size={12} className="animate-spin" /> : <Activity size={12} />}
+              <span>{isCheckingPing ? 'Verifying...' : 'Check Connection'}</span>
+            </button>
+
+            <button
+              type="button"
+              className="btn btn-o btn-xs"
+              onClick={loadConnectionStatus}
+              disabled={isLoadingStatus}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+              title="Fetch fresh connection status from backend"
+            >
+              <RefreshCw size={12} className={isLoadingStatus ? 'animate-spin' : ''} />
+              <span>Refresh</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* SAVED PROFILES & CONFIGURATIONS TABLE */}
       <div className="tbl-wrap" style={{ marginBottom: '16px' }}>
         <table className="tbl">
@@ -380,7 +559,8 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
             {servers.map(server => {
               const isSelected = server.id === selectedServerId;
               const isResend = server.provider === 'resend';
-              const hasCredentials = isResend ? Boolean(server.apiKey?.trim()) : Boolean(server.pass?.trim());
+              const hasCredentials = isResend ? Boolean(server.apiKey?.trim() || connStatus?.hasEnvKey) : Boolean(server.pass?.trim());
+              const isFromEnv = server.isEnvConfigured || (isResend && connStatus?.hasEnvKey);
 
               return (
                 <tr
@@ -401,7 +581,14 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
                     />
                   </td>
                   <td>
-                    <div style={{ fontWeight: 600, color: 'var(--ink)' }}>{server.name}</div>
+                    <div style={{ fontWeight: 600, color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>{server.name}</span>
+                      {isFromEnv && (
+                        <span className="badge bb" style={{ fontSize: '9.5px', padding: '1px 5px' }}>
+                          Vercel Env
+                        </span>
+                      )}
+                    </div>
                     {isResend ? (
                       <span style={{ fontSize: '11px', color: '#059669', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                         <ShieldCheck size={11} /> HTTPS REST API (Port 443)
@@ -440,7 +627,7 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
                     )}
                   </td>
                   <td>
-                    {server.status === 'verified' ? (
+                    {server.status === 'verified' || (isResend && connStatus?.connected) ? (
                       <span className="badge bg" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                         <CheckCircle2 size={10} /> Verified
                       </span>
