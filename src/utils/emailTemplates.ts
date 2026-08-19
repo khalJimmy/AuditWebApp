@@ -32,33 +32,33 @@ export const renderAuditScheduledEmail = (data: AuditScheduleEmailData): string 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Audit Scheduled - Casagrand Process Audit</title>
+  <title>Audit Schedule Notice - Casagrand Process Audit</title>
 </head>
-<body style="margin:0; padding:0; background-color:#f1f5f9; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; -webkit-font-smoothing:antialiased;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f1f5f9; padding:24px 12px;">
+<body style="margin:0; padding:0; background-color:#f8fafc; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing:antialiased; color:#0f172a;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f8fafc; padding:32px 16px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:620px; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 25px rgba(15,23,42,0.12); border:1px solid #cbd5e1;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px; background-color:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05); border:1px solid #e2e8f0;">
           
-          <!-- BRAND HEADER -->
+          <!-- CORPORATE HEADER -->
           <tr>
-            <td style="background-color:#0f172a; padding:28px 32px; text-align:left; border-bottom:4px solid #d97706;">
+            <td style="background-color:#0f172a; padding:24px 32px; text-align:left; border-bottom:3px solid #c8401a;">
               <table width="100%" cellspacing="0" cellpadding="0" border="0">
                 <tr>
                   <td>
-                    <span style="display:inline-block; background-color:#d97706; color:#ffffff; font-weight:800; font-size:12px; padding:4px 10px; border-radius:4px; letter-spacing:1px; text-transform:uppercase; margin-bottom:8px;">
-                      CASAGRAND
-                    </span>
-                    <h1 style="margin:0; color:#ffffff; font-size:22px; font-weight:700; letter-spacing:-0.5px;">
-                      Process Audit Command Centre
-                    </h1>
-                    <p style="margin:4px 0 0 0; color:#94a3b8; font-size:13px;">
-                      Official Process &amp; Quality Audit Schedule Notification
-                    </p>
+                    <div style="font-size:11px; font-weight:700; color:#c8401a; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:4px;">
+                      CASAGRAND BUILDER PVT LTD
+                    </div>
+                    <div style="color:#ffffff; font-size:18px; font-weight:700; letter-spacing:-0.2px;">
+                      Process &amp; Quality Audit Management
+                    </div>
+                    <div style="color:#94a3b8; font-size:12px; margin-top:2px;">
+                      Internal Audit Scheduling Notice
+                    </div>
                   </td>
-                  <td align="right" valign="top">
-                    <span style="background-color:rgba(217,119,6,0.2); color:#fbbf24; border:1px solid #d97706; font-size:11px; font-weight:700; padding:6px 12px; border-radius:20px; display:inline-block;">
-                      📅 SCHEDULED
+                  <td align="right" valign="middle">
+                    <span style="background-color:rgba(255,255,255,0.08); color:#f8fafc; border:1px solid rgba(255,255,255,0.2); font-size:11px; font-weight:600; padding:4px 10px; border-radius:4px; letter-spacing:0.5px; text-transform:uppercase;">
+                      Scheduled
                     </span>
                   </td>
                 </tr>
@@ -66,99 +66,76 @@ export const renderAuditScheduledEmail = (data: AuditScheduleEmailData): string 
             </td>
           </tr>
 
-          <!-- INTRIGUING BANNER -->
+          <!-- NOTICE BANNER -->
           <tr>
-            <td style="background-color:#fffbe0; padding:16px 32px; border-bottom:1px solid #fef08a;">
-              <table width="100%" cellspacing="0" cellpadding="0" border="0">
-                <tr>
-                  <td width="36" valign="top" style="font-size:22px;">📋</td>
-                  <td style="font-size:13px; color:#854d0e; line-height:1.5;">
-                    <strong>Attention SPOC &amp; HOD:</strong> An official process compliance audit has been scheduled for your department. Review checklists early in the portal to ensure maximum audit score.
-                  </td>
-                </tr>
-              </table>
+            <td style="background-color:#f1f5f9; padding:14px 32px; border-bottom:1px solid #e2e8f0;">
+              <div style="font-size:12.5px; color:#334155; line-height:1.5;">
+                <strong style="color:#0f172a;">Official Notice:</strong> An internal process compliance audit has been scheduled for your department. Please review the operational parameters prior to the audit date.
+              </div>
             </td>
           </tr>
 
           <!-- MAIN CONTENT BODY -->
           <tr>
-            <td style="padding:32px; color:#334155; font-size:14px; line-height:1.6;">
-              <p style="margin:0 0 16px 0; font-size:15px; font-weight:600; color:#0f172a;">
-                Dear ${data.spocName || 'SPOC'} &amp; Department HOD,
+            <td style="padding:28px 32px; color:#334155; font-size:13.5px; line-height:1.6;">
+              <p style="margin:0 0 16px 0; font-size:14px; font-weight:600; color:#0f172a;">
+                Dear ${data.spocName || 'Department SPOC'} &amp; Head of Department,
               </p>
-              <p style="margin:0 0 24px 0; color:#475569;">
-                Please be informed that an upcoming Process &amp; Quality Audit plan <strong style="color:#0f172a;">${data.planId}</strong> has been assigned to <strong style="color:#0f172a;">${data.department}</strong> (${data.zone} Zone).
+              <p style="margin:0 0 20px 0; color:#475569;">
+                An audit session has been registered under Plan Reference <strong style="color:#0f172a;">${data.planId}</strong> for the department specified below:
               </p>
 
-              <!-- METRICS DETAILS CARD -->
-              <table width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; margin-bottom:24px; padding:16px;">
-                <tr>
-                  <td style="padding:8px 0; border-bottom:1px solid #f1f5f9;" width="40%">
-                    <span style="font-size:12px; color:#64748b; font-weight:600;">Audit Plan ID</span>
-                  </td>
-                  <td style="padding:8px 0; border-bottom:1px solid #f1f5f9; font-weight:700; color:#0f172a;">
-                    ${data.planId}
-                  </td>
+              <!-- METRICS DETAILS TABLE -->
+              <table width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #e2e8f0; border-radius:6px; margin-bottom:24px; border-collapse:collapse;">
+                <tr style="background-color:#f8fafc; border-bottom:1px solid #e2e8f0;">
+                  <td style="padding:10px 14px; font-size:12px; color:#64748b; font-weight:600;" width="38%">Audit Plan ID</td>
+                  <td style="padding:10px 14px; font-size:13px; font-weight:700; color:#0f172a;">${data.planId}</td>
                 </tr>
-                <tr>
-                  <td style="padding:8px 0; border-bottom:1px solid #f1f5f9;">
-                    <span style="font-size:12px; color:#64748b; font-weight:600;">Department / Function</span>
-                  </td>
-                  <td style="padding:8px 0; border-bottom:1px solid #f1f5f9; font-weight:700; color:#0f172a;">
-                    ${data.department} (${data.zone})
-                  </td>
+                <tr style="border-bottom:1px solid #e2e8f0;">
+                  <td style="padding:10px 14px; font-size:12px; color:#64748b; font-weight:600;">Department / Function</td>
+                  <td style="padding:10px 14px; font-size:13px; font-weight:600; color:#0f172a;">${data.department} (${data.zone} Zone)</td>
                 </tr>
-                <tr>
-                  <td style="padding:8px 0; border-bottom:1px solid #f1f5f9;">
-                    <span style="font-size:12px; color:#64748b; font-weight:600;">Target Audit Date</span>
-                  </td>
-                  <td style="padding:8px 0; border-bottom:1px solid #f1f5f9; font-weight:700; color:#d97706;">
-                    📆 ${data.scheduledDate}
-                  </td>
+                <tr style="background-color:#f8fafc; border-bottom:1px solid #e2e8f0;">
+                  <td style="padding:10px 14px; font-size:12px; color:#64748b; font-weight:600;">Target Audit Date</td>
+                  <td style="padding:10px 14px; font-size:13px; font-weight:700; color:#c8401a;">${data.scheduledDate}</td>
                 </tr>
-                <tr>
-                  <td style="padding:8px 0; border-bottom:1px solid #f1f5f9;">
-                    <span style="font-size:12px; color:#64748b; font-weight:600;">Assigned Lead Auditor</span>
-                  </td>
-                  <td style="padding:8px 0; border-bottom:1px solid #f1f5f9; font-weight:600; color:#1e293b;">
-                    👤 ${data.auditorName}
-                  </td>
+                <tr style="border-bottom:1px solid #e2e8f0;">
+                  <td style="padding:10px 14px; font-size:12px; color:#64748b; font-weight:600;">Assigned Lead Auditor</td>
+                  <td style="padding:10px 14px; font-size:13px; font-weight:500; color:#1e293b;">${data.auditorName}</td>
                 </tr>
-                <tr>
-                  <td style="padding:8px 0;">
-                    <span style="font-size:12px; color:#64748b; font-weight:600;">Recipient SPOC &amp; HOD</span>
-                  </td>
-                  <td style="padding:8px 0; font-size:12px; color:#475569;">
+                <tr style="background-color:#f8fafc;">
+                  <td style="padding:10px 14px; font-size:12px; color:#64748b; font-weight:600;">Notified Stakeholders</td>
+                  <td style="padding:10px 14px; font-size:12px; color:#475569;">
                     ${data.spocEmail} <br/> ${data.hodEmail}
                   </td>
                 </tr>
               </table>
 
-              <!-- CALL TO ACTION BUTTON -->
-              <table width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:24px;">
+              <!-- CTA BUTTON -->
+              <table width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:20px;">
                 <tr>
                   <td align="center">
-                    <a href="${portalUrl}" target="_blank" style="display:inline-block; background-color:#0f172a; color:#ffffff; text-decoration:none; font-weight:700; font-size:14px; padding:14px 28px; border-radius:6px; border-bottom:3px solid #d97706; box-shadow:0 4px 12px rgba(15,23,42,0.25);">
-                      🚀 Launch Audit Portal &amp; Review Checklists
+                    <a href="${portalUrl}" target="_blank" style="display:inline-block; background-color:#0f172a; color:#ffffff; text-decoration:none; font-weight:600; font-size:13px; padding:12px 24px; border-radius:5px; border:1px solid #1e293b;">
+                      Access Audit Management Portal &rarr;
                     </a>
                   </td>
                 </tr>
               </table>
 
-              <p style="margin:0; font-size:12px; color:#64748b; text-align:center;">
-                Note: Prompt compliance closing directly impacts department quarterly performance ratings.
+              <p style="margin:0; font-size:11.5px; color:#64748b; text-align:center;">
+                Please ensure required documentation and process evidences are prepared prior to the audit date.
               </p>
             </td>
           </tr>
 
-          <!-- FOOTER -->
+          <!-- CORPORATE FOOTER -->
           <tr>
-            <td style="background-color:#f8fafc; padding:20px 32px; text-align:center; border-top:1px solid #e2e8f0; font-size:11px; color:#94a3b8;">
-              <p style="margin:0 0 4px 0; font-weight:600; color:#64748b;">
-                Casagrand Process &amp; Quality Audit Management System
+            <td style="background-color:#f8fafc; padding:18px 32px; text-align:center; border-top:1px solid #e2e8f0; font-size:11px; color:#64748b;">
+              <p style="margin:0 0 3px 0; font-weight:600; color:#334155;">
+                Casagrand Builder Private Limited • Quality &amp; Process Governance
               </p>
-              <p style="margin:0;">
-                Automated Notification via Direct SMTP Relay Protocol · Do Not Reply Directly
+              <p style="margin:0; color:#94a3b8;">
+                Automated notification from Audit Management System. Do not reply directly to this message.
               </p>
             </td>
           </tr>
@@ -177,138 +154,112 @@ export const renderCapaClockTickingEmail = (data: CapaClockTickingEmailData): st
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>URGENT: CAPA SLA Clock Active - Casagrand Audit</title>
+  <title>Action Required: CAPA Response Pending - Casagrand Audit</title>
 </head>
-<body style="margin:0; padding:0; background-color:#0f172a; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; -webkit-font-smoothing:antialiased;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#0f172a; padding:24px 12px;">
+<body style="margin:0; padding:0; background-color:#f8fafc; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing:antialiased; color:#0f172a;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f8fafc; padding:32px 16px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:620px; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 12px 35px rgba(0,0,0,0.5); border:1px solid #334155;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px; background-color:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05); border:1px solid #e2e8f0;">
           
-          <!-- HIGH URGENCY HEADER -->
+          <!-- EXECUTIVE HEADER -->
           <tr>
-            <td style="background:linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding:28px 32px; text-align:left; border-bottom:4px solid #ef4444;">
+            <td style="background-color:#0f172a; padding:24px 32px; text-align:left; border-bottom:3px solid #c8401a;">
               <table width="100%" cellspacing="0" cellpadding="0" border="0">
                 <tr>
                   <td>
-                    <span style="display:inline-block; background-color:#ef4444; color:#ffffff; font-weight:800; font-size:11px; padding:4px 10px; border-radius:4px; letter-spacing:1px; text-transform:uppercase; margin-bottom:8px;">
-                      🔥 URGENT SLA NOTICE
-                    </span>
-                    <h1 style="margin:0; color:#ffffff; font-size:22px; font-weight:700; letter-spacing:-0.5px;">
-                      Audit Findings Dispatched!
-                    </h1>
-                    <p style="margin:4px 0 0 0; color:#fca5a5; font-size:13px; font-weight:600;">
-                      ⏰ The ${data.tatHours}-Hour CAPA Resolution Clock Is Ticking!
-                    </p>
-                  </td>
-                  <td align="right" valign="top">
-                    <div style="background-color:rgba(239,68,68,0.15); border:1px solid #ef4444; color:#f87171; padding:8px 12px; border-radius:8px; text-align:center;">
-                      <span style="font-size:18px; display:block;">⏱️</span>
-                      <span style="font-size:10px; font-weight:800; text-transform:uppercase;">${data.tatHours}H SLA</span>
+                    <div style="font-size:11px; font-weight:700; color:#c8401a; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:4px;">
+                      CASAGRAND BUILDER PVT LTD
                     </div>
+                    <div style="color:#ffffff; font-size:18px; font-weight:700; letter-spacing:-0.2px;">
+                      Process Audit Findings &amp; Action Required
+                    </div>
+                    <div style="color:#94a3b8; font-size:12px; margin-top:2px;">
+                      ${data.tatHours}-Hour Corrective Action Window
+                    </div>
+                  </td>
+                  <td align="right" valign="middle">
+                    <span style="background-color:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; font-size:11px; font-weight:700; padding:4px 10px; border-radius:4px; letter-spacing:0.5px; text-transform:uppercase;">
+                      Action Pending
+                    </span>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
 
-          <!-- COUNTDOWN ALERT STRIP -->
+          <!-- NOTICE BANNER -->
           <tr>
-            <td style="background-color:#fef2f2; padding:16px 32px; border-bottom:1px solid #fecaca;">
-              <table width="100%" cellspacing="0" cellpadding="0" border="0">
-                <tr>
-                  <td width="36" valign="top" style="font-size:22px;">⏳</td>
-                  <td style="font-size:13px; color:#991b1b; line-height:1.5;">
-                    <strong>Action Required:</strong> Process audit report <strong style="color:#7f1d1d;">${data.auditId}</strong> findings have been dispatched to your department. You have strictly <strong>${data.tatHours} Hours</strong> to log Corrective &amp; Preventive Action (CAPA) before automatic escalation to HOD.
-                  </td>
-                </tr>
-              </table>
+            <td style="background-color:#fef2f2; padding:14px 32px; border-bottom:1px solid #fee2e2;">
+              <div style="font-size:12.5px; color:#991b1b; line-height:1.5;">
+                <strong>Corrective Action Plan (CAPA) Required:</strong> Audit findings for report <strong style="color:#7f1d1d;">${data.auditId}</strong> have been finalized. Please submit Root Cause Analysis, Immediate Correction, and CAPA.
+              </div>
             </td>
           </tr>
 
           <!-- MAIN CONTENT BODY -->
           <tr>
-            <td style="padding:32px; color:#334155; font-size:14px; line-height:1.6;">
-              <p style="margin:0 0 16px 0; font-size:15px; font-weight:600; color:#0f172a;">
-                Dear Department SPOC (${data.spocEmail}) &amp; HOD,
+            <td style="padding:28px 32px; color:#334155; font-size:13.5px; line-height:1.6;">
+              <p style="margin:0 0 16px 0; font-size:14px; font-weight:600; color:#0f172a;">
+                Dear Department SPOC &amp; Head of Department,
               </p>
               <p style="margin:0 0 20px 0; color:#475569;">
-                The Auditor Lead has finalized findings for <strong style="color:#0f172a;">${data.department}</strong> (${data.zone} Zone). The SLA timer was initiated at <strong>${data.dispatchedAt}</strong> and will expire on <strong>${data.dueAt}</strong>.
+                The internal audit for <strong style="color:#0f172a;">${data.department}</strong> (${data.zone} Zone) has concluded. Findings summary and response schedule are detailed below:
               </p>
 
-              <!-- FINDINGS & SLA BREAKDOWN CARD -->
-              <table width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; margin-bottom:24px; padding:16px;">
-                <tr>
-                  <td style="padding:8px 0; border-bottom:1px solid #f1f5f9;" width="45%">
-                    <span style="font-size:12px; color:#64748b; font-weight:600;">Audit Reference ID</span>
-                  </td>
-                  <td style="padding:8px 0; border-bottom:1px solid #f1f5f9; font-weight:700; color:#0f172a;">
-                    ${data.auditId}
+              <!-- FINDINGS & SLA TABLE -->
+              <table width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #e2e8f0; border-radius:6px; margin-bottom:24px; border-collapse:collapse;">
+                <tr style="background-color:#f8fafc; border-bottom:1px solid #e2e8f0;">
+                  <td style="padding:10px 14px; font-size:12px; color:#64748b; font-weight:600;" width="42%">Audit Reference ID</td>
+                  <td style="padding:10px 14px; font-size:13px; font-weight:700; color:#0f172a;">${data.auditId}</td>
+                </tr>
+                <tr style="border-bottom:1px solid #e2e8f0;">
+                  <td style="padding:10px 14px; font-size:12px; color:#64748b; font-weight:600;">Non-Conformances (NC)</td>
+                  <td style="padding:10px 14px; font-size:13px; font-weight:600; color:#b91c1c;">
+                    ${data.ncCount} Non-Conformance Item${data.ncCount === 1 ? '' : 's'}
                   </td>
                 </tr>
-                <tr>
-                  <td style="padding:8px 0; border-bottom:1px solid #f1f5f9;">
-                    <span style="font-size:12px; color:#64748b; font-weight:600;">Non-Conformances (NC)</span>
-                  </td>
-                  <td style="padding:8px 0; border-bottom:1px solid #f1f5f9;">
-                    <span style="display:inline-block; background-color:#fee2e2; color:#dc2626; font-weight:700; font-size:12px; padding:2px 8px; border-radius:12px; border:1px solid #fca5a5;">
-                      ⚠️ ${data.ncCount} Critical NCs Dispatched
-                    </span>
+                <tr style="background-color:#f8fafc; border-bottom:1px solid #e2e8f0;">
+                  <td style="padding:10px 14px; font-size:12px; color:#64748b; font-weight:600;">Observations (OBS)</td>
+                  <td style="padding:10px 14px; font-size:13px; font-weight:600; color:#b45309;">
+                    ${data.obsCount} Observation Item${data.obsCount === 1 ? '' : 's'}
                   </td>
                 </tr>
-                <tr>
-                  <td style="padding:8px 0; border-bottom:1px solid #f1f5f9;">
-                    <span style="font-size:12px; color:#64748b; font-weight:600;">Observations (OBS)</span>
-                  </td>
-                  <td style="padding:8px 0; border-bottom:1px solid #f1f5f9;">
-                    <span style="display:inline-block; background-color:#fef3c7; color:#d97706; font-weight:700; font-size:12px; padding:2px 8px; border-radius:12px; border:1px solid #fde68a;">
-                      🔍 ${data.obsCount} Observations
-                    </span>
-                  </td>
+                <tr style="border-bottom:1px solid #e2e8f0;">
+                  <td style="padding:10px 14px; font-size:12px; color:#64748b; font-weight:600;">Dispatched Timestamp</td>
+                  <td style="padding:10px 14px; font-size:12.5px; font-weight:500; color:#334155;">${data.dispatchedAt}</td>
                 </tr>
-                <tr>
-                  <td style="padding:8px 0; border-bottom:1px solid #f1f5f9;">
-                    <span style="font-size:12px; color:#64748b; font-weight:600;">Clock Started (Dispatched)</span>
-                  </td>
-                  <td style="padding:8px 0; border-bottom:1px solid #f1f5f9; font-size:12px; font-weight:600; color:#334155;">
-                    ${data.dispatchedAt}
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:8px 0;">
-                    <span style="font-size:12px; color:#64748b; font-weight:600;">SLA Deadline (${data.tatHours}h)</span>
-                  </td>
-                  <td style="padding:8px 0; font-size:13px; font-weight:800; color:#dc2626;">
-                    🚨 ${data.dueAt}
-                  </td>
+                <tr style="background-color:#f8fafc;">
+                  <td style="padding:10px 14px; font-size:12px; color:#64748b; font-weight:600;">SLA Window</td>
+                  <td style="padding:10px 14px; font-size:13px; font-weight:700; color:#0f172a;">${data.tatHours} Hours (Target: ${data.dueAt})</td>
                 </tr>
               </table>
 
-              <!-- PROMINENT ONE-CLICK DIRECT RESPONSE LINK -->
-              <table width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:24px;">
+              <!-- CTA BUTTON -->
+              <table width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:20px;">
                 <tr>
                   <td align="center">
-                    <a href="${data.directTokenLink}" target="_blank" style="display:inline-block; background-color:#d97706; color:#ffffff; text-decoration:none; font-weight:800; font-size:15px; padding:16px 32px; border-radius:8px; border-bottom:4px solid #b45309; box-shadow:0 6px 16px rgba(217,119,6,0.35);">
-                      ⚡ Click Here to Submit CAPA Response Now
+                    <a href="${data.directTokenLink}" target="_blank" style="display:inline-block; background-color:#c8401a; color:#ffffff; text-decoration:none; font-weight:600; font-size:13.5px; padding:13px 28px; border-radius:5px; box-shadow:0 1px 3px rgba(200,64,26,0.3);">
+                      Submit Corrective Action Plan &rarr;
                     </a>
                   </td>
                 </tr>
               </table>
 
-              <p style="margin:0; font-size:12px; color:#64748b; text-align:center;">
-                No login required. This secure direct link grants immediate access to respond to your department's audit findings.
+              <p style="margin:0; font-size:11.5px; color:#64748b; text-align:center;">
+                Direct access link configured for authorized SPOC &amp; HOD review. No credential entry required.
               </p>
             </td>
           </tr>
 
-          <!-- FOOTER -->
+          <!-- CORPORATE FOOTER -->
           <tr>
-            <td style="background-color:#0f172a; color:#94a3b8; padding:20px 32px; text-align:center; font-size:11px; border-top:1px solid #1e293b;">
-              <p style="margin:0 0 4px 0; font-weight:700; color:#e2e8f0;">
-                Casagrand Process Audit &amp; Quality Control Systems
+            <td style="background-color:#f8fafc; padding:18px 32px; text-align:center; border-top:1px solid #e2e8f0; font-size:11px; color:#64748b;">
+              <p style="margin:0 0 3px 0; font-weight:600; color:#334155;">
+                Casagrand Builder Private Limited • Process Audit &amp; Quality Governance
               </p>
-              <p style="margin:0; color:#64748b;">
-                PostgreSQL Email Dispatch Queue · Automated SLA Clock Tracker
+              <p style="margin:0; color:#94a3b8;">
+                Automated SLA Notification Dispatcher • System Log Tracked
               </p>
             </td>
           </tr>

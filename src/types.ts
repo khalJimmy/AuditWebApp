@@ -36,12 +36,15 @@ export interface ZoneContact {
   sm: string;      // SPOC Email
   hm: string;      // HOD Email
   hodName?: string;// HOD Name
+  phone?: string;
+  spocId?: string;
 }
 
 export interface Department {
-  ref: string;
-  dept: string;
-  fn: string;
+  id?: string;      // Unique Department ID (e.g. dept_aa, dept_ae)
+  ref: string;      // Unique Reference code (e.g. AA, AE, AD)
+  dept: string;     // Department Name
+  fn: string;       // Function Name
   sn?: string;      // Default SPOC Name
   sm?: string;      // Default SPOC Email
   hm?: string;      // Default HOD Email
@@ -139,6 +142,16 @@ export interface PlanItem {
 
 export type AuditPlan = PlanItem;
 
+export interface EmailLogEntry {
+  sentAt: string;
+  recipient: string;
+  type: 'initial_dispatch' | 'reminder' | 'manual_notice';
+  status: string;
+  subject?: string;
+  messageId?: string;
+  error?: string;
+}
+
 export interface AuditTask {
   taskId: string;
   auditId: string;
@@ -153,6 +166,8 @@ export interface AuditTask {
   findings: Finding[];
   status: 'Notified' | 'Response Pending' | 'Delayed' | 'Completed' | 'Closed';
   reminderCount?: number;
+  emailSentCount?: number;
+  emailLogs?: EmailLogEntry[];
   respondedAt?: string;
   closedAt?: string;
   response?: Record<string, {
@@ -169,21 +184,27 @@ export interface ZoneAuditors {
   Bangalore: string[];
 }
 
+export type EmailProviderType = 'resend' | 'gmail' | 'office365' | 'custom';
+
 export interface SmtpServerConfig {
   id: string;
   name: string;
-  provider: 'gmail' | 'office365' | 'custom';
-  host: string;
-  port: number;
-  secure: boolean;
-  user: string;
-  pass: string;
+  provider: EmailProviderType;
+  apiKey?: string; // For Resend API Key (re_...)
+  host?: string;
+  port?: number;
+  secure?: boolean;
+  user?: string;
+  pass?: string;
   fromName: string;
   fromEmail: string;
   isDefault?: boolean;
   lastTestedAt?: string;
   status?: 'verified' | 'failed' | 'untested';
+  testMessageId?: string;
 }
+
+export type EmailServerConfig = SmtpServerConfig;
 
 export interface EmailAttachment {
   filename: string;
@@ -201,6 +222,7 @@ export interface Settings {
   auditors?: ZoneAuditors;
   params?: { id: string; title: string; max: number }[];
   senderEmail?: string;
+  resendApiKey?: string;
   smtpServers?: SmtpServerConfig[];
   activeSmtpServerId?: string;
 }

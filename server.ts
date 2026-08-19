@@ -291,8 +291,30 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
     }
   });
 
-  // DEPARTMENTS: List
-  app.get('/api/depts', (_req: Request, res: Response) => {
+  // DEPARTMENTS: List (Supports Scoping by Auditor / User)
+  app.get('/api/depts', (req: Request, res: Response) => {
+    const { auditorId, userId, role, zone } = req.query;
+    
+    // Ensure all departments have unique ID
+    depts.forEach(d => {
+      if (!d.id) d.id = `dept_${d.ref.toLowerCase()}`;
+    });
+
+    const targetUserId = (auditorId || userId) as string;
+    const reqUser = targetUserId ? users.find(u => u.id === targetUserId || u.username === targetUserId) : null;
+    const isAuditor = (role === 'auditor') || (reqUser && reqUser.role === 'auditor');
+
+    if (isAuditor && reqUser) {
+      const userDepts = reqUser.depts || [];
+      const scoped = depts.filter(d => 
+        userDepts.includes(d.ref) || 
+        userDepts.includes(d.id || '') || 
+        userDepts.includes(d.dept)
+      );
+      res.json(scoped);
+      return;
+    }
+
     res.json(depts);
   });
 
@@ -304,7 +326,10 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
         res.status(400).json({ error: 'Ref, Department name, and Function are required.' });
         return;
       }
-      const existingIdx = depts.findIndex(item => item.ref === d.ref);
+      if (!d.id) {
+        d.id = `dept_${d.ref.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+      }
+      const existingIdx = depts.findIndex(item => item.ref === d.ref || (d.id && item.id === d.id));
       if (existingIdx >= 0) {
         depts[existingIdx] = { ...depts[existingIdx], ...d };
       } else {
@@ -321,7 +346,7 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
   app.delete('/api/depts/:ref', (req: Request, res: Response, next: NextFunction) => {
     try {
       const { ref } = req.params;
-      depts = depts.filter(d => d.ref !== ref);
+      depts = depts.filter(d => d.ref !== ref && d.id !== ref);
       res.json({ success: true, deletedRef: ref });
     } catch (err) {
       next(err);
@@ -339,7 +364,10 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
           skipped++;
           return;
         }
-        if (depts.find(d => d.ref === item.ref)) {
+        if (!item.id) {
+          item.id = `dept_${item.ref.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+        }
+        if (depts.find(d => d.ref === item.ref || d.id === item.id)) {
           skipped++;
           return;
         }
@@ -353,9 +381,31 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
     }
   });
 
-  // USERS: List
-  app.get('/api/users', (_req: Request, res: Response) => {
+  // USERS: List (Supports Scoping by Auditor)
+  app.get('/api/users', (req: Request, res: Response) => {
+    const { auditorId, userId, role } = req.query;
+    const targetUserId = (auditorId || userId) as string;
+    const reqUser = targetUserId ? users.find(u => u.id === targetUserId || u.username === targetUserId) : null;
+    const isAuditor = (role === 'auditor') || (reqUser && reqUser.role === 'auditor');
+
     const safeUsers = users.map(({ pw, ...u }) => u);
+
+    if (isAuditor && reqUser) {
+      const userDepts = reqUser.depts || [];
+      const userZone = reqUser.zone || '';
+      // Return Admin, self, and SPOCs linked to the auditor's assigned departments and zone
+      const scopedUsers = safeUsers.filter(u => 
+        u.role === 'admin' ||
+        u.id === reqUser.id ||
+        (u.role === 'spoc' && (
+          (!userZone || !u.zone || u.zone === userZone) &&
+          (u.depts?.some(d => userDepts.includes(d)) || userDepts.includes(u.username) || userDepts.includes(u.name))
+        ))
+      );
+      res.json(scopedUsers);
+      return;
+    }
+
     res.json(safeUsers);
   });
 
@@ -406,8 +456,28 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
     }
   });
 
-  // AUDITS: List
-  app.get('/api/audits', (_req: Request, res: Response) => {
+  // AUDITS: List (Supports Scoping by Auditor)
+  app.get('/api/audits', (req: Request, res: Response) => {
+    const { auditorId, userId, role } = req.query;
+    const targetUserId = (auditorId || userId) as string;
+    const reqUser = targetUserId ? users.find(u => u.id === targetUserId || u.username === targetUserId) : null;
+    const isAuditor = (role === 'auditor') || (reqUser && reqUser.role === 'auditor');
+
+    if (isAuditor && reqUser) {
+      const userDepts = reqUser.depts || [];
+      const userZone = reqUser.zone || '';
+      const userName = (reqUser.name || '').toLowerCase();
+      const scopedAudits = audits.filter(a =>
+        userDepts.includes(a.ref) ||
+        userDepts.includes(a.dept) ||
+        (userZone && a.zone === userZone) ||
+        (a.auditor && a.auditor.toLowerCase().includes(userName)) ||
+        (a.submittedBy && a.submittedBy === reqUser.username)
+      );
+      res.json(scopedAudits);
+      return;
+    }
+
     res.json(audits);
   });
 
@@ -450,8 +520,27 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
     }
   });
 
-  // PLANS: List
-  app.get('/api/plans', (_req: Request, res: Response) => {
+  // PLANS: List (Supports Scoping by Auditor / User)
+  app.get('/api/plans', (req: Request, res: Response) => {
+    const { auditorId, userId, role } = req.query;
+    const targetUserId = (auditorId || userId) as string;
+    const reqUser = targetUserId ? users.find(u => u.id === targetUserId || u.username === targetUserId) : null;
+    const isAuditor = (role === 'auditor') || (reqUser && reqUser.role === 'auditor');
+
+    if (isAuditor && reqUser) {
+      const userDepts = reqUser.depts || [];
+      const userZone = reqUser.zone || '';
+      const userName = (reqUser.name || '').toLowerCase();
+      const scopedPlans = plans.filter(p =>
+        userDepts.includes(p.ref) ||
+        userDepts.includes(p.dept) ||
+        (userZone && p.zone === userZone) ||
+        (p.auditor && p.auditor.toLowerCase().includes(userName))
+      );
+      res.json(scopedPlans);
+      return;
+    }
+
     res.json(plans);
   });
 
@@ -558,8 +647,23 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
     }
   });
 
-  // TASKS: List
-  app.get('/api/tasks', (_req: Request, res: Response) => {
+  // TASKS: List (Supports Scoping by Auditor / User)
+  app.get('/api/tasks', (req: Request, res: Response) => {
+    const { auditorId, userId, role } = req.query;
+    const targetUserId = (auditorId || userId) as string;
+    const reqUser = targetUserId ? users.find(u => u.id === targetUserId || u.username === targetUserId) : null;
+    const isAuditor = (role === 'auditor') || (reqUser && reqUser.role === 'auditor');
+
+    if (isAuditor && reqUser) {
+      const userDepts = reqUser.depts || [];
+      const scopedTasks = tasks.filter(t => 
+        userDepts.includes(t.dept) ||
+        depts.some(d => (d.dept === t.dept || d.fn === t.fn) && userDepts.includes(d.ref))
+      );
+      res.json(scopedTasks);
+      return;
+    }
+
     res.json(tasks);
   });
 
@@ -578,9 +682,9 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
     }
   });
 
-  // ==========================================
-  // SMTP EMAIL TRANSPORTER & ATTACHMENT LOGIC
-  // ==========================================
+  // ====================================================
+  // EMAIL DELIVERY ENGINE (RESEND HTTPS API + SMTP RELAY)
+  // ====================================================
   function getSmtpConfig(customServerId?: string): SmtpServerConfig | null {
     let cfg: SmtpServerConfig | null = null;
     if (customServerId && settings.smtpServers) {
@@ -592,32 +696,97 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
     if (!cfg && settings.smtpServers && settings.smtpServers.length > 0) {
       cfg = settings.smtpServers.find(s => s.isDefault) || settings.smtpServers[0];
     }
-    if (!cfg && process.env.SMTP_USER) {
-      cfg = {
-        id: 'env_smtp',
-        name: 'Environment SMTP Relay',
-        provider: (process.env.SMTP_PROVIDER as any) || 'gmail',
-        host: process.env.SMTP_HOST || 'smtp.gmail.com',
-        port: Number(process.env.SMTP_PORT) || 587,
-        secure: process.env.SMTP_SECURE === 'true',
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS || '',
-        fromName: process.env.SMTP_FROM_NAME || 'Casagrand Quality Audit',
-        fromEmail: process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER,
-        isDefault: true
-      };
+    if (!cfg) {
+      const resendKey = process.env.RESEND_API_KEY || settings.resendApiKey;
+      if (resendKey) {
+        cfg = {
+          id: 'cfg_resend_env',
+          name: 'Resend HTTPS API (Cloud Production)',
+          provider: 'resend',
+          apiKey: resendKey,
+          fromName: 'Casagrand Quality & Process Audit',
+          fromEmail: process.env.RESEND_FROM || 'onboarding@resend.dev',
+          isDefault: true,
+          status: 'verified'
+        };
+      }
     }
-
-    // If server config pass is empty but process.env.SMTP_PASS exists, fallback to env variable
-    if (cfg && !cfg.pass && process.env.SMTP_PASS) {
-      cfg = {
-        ...cfg,
-        pass: process.env.SMTP_PASS,
-        user: cfg.user || process.env.SMTP_USER || ''
-      };
-    }
-
     return cfg;
+  }
+
+  async function sendViaResendApi(
+    apiKey: string,
+    cfg: SmtpServerConfig,
+    params: {
+      to: string | string[];
+      cc?: string | string[];
+      bcc?: string | string[];
+      subject: string;
+      html: string;
+      text?: string;
+      attachments?: EmailAttachment[];
+    }
+  ): Promise<{ success: boolean; messageId: string; serverName: string }> {
+    const cleanKey = (apiKey || '').trim().replace(/^['"]|['"]$/g, '');
+    if (!cleanKey) {
+      throw new Error('Resend API key is missing. Please save a valid API key (starts with "re_") in Settings.');
+    }
+
+    const toList = Array.isArray(params.to)
+      ? params.to
+      : params.to.split(',').map(s => s.trim()).filter(Boolean);
+
+    const ccList = params.cc
+      ? (Array.isArray(params.cc) ? params.cc : params.cc.split(',').map(s => s.trim()).filter(Boolean))
+      : undefined;
+
+    const bccList = params.bcc
+      ? (Array.isArray(params.bcc) ? params.bcc : params.bcc.split(',').map(s => s.trim()).filter(Boolean))
+      : undefined;
+
+    const fromEmail = (cfg.fromEmail || process.env.RESEND_FROM || 'onboarding@resend.dev').trim();
+    const fromName = (cfg.fromName || 'Casagrand Quality Audit').trim();
+    const fromHeader = `"${fromName}" <${fromEmail}>`;
+
+    const attachments = params.attachments?.map(att => ({
+      filename: att.filename,
+      content: att.encoding === 'base64'
+        ? att.content
+        : Buffer.from(att.content, 'utf-8').toString('base64')
+    }));
+
+    const payload: any = {
+      from: fromHeader,
+      to: toList,
+      subject: params.subject,
+      html: params.html
+    };
+
+    if (params.text) payload.text = params.text;
+    if (ccList && ccList.length > 0) payload.cc = ccList;
+    if (bccList && bccList.length > 0) payload.bcc = bccList;
+    if (attachments && attachments.length > 0) payload.attachments = attachments;
+
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${cleanKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const resData: any = await res.json();
+    if (!res.ok) {
+      const errMsg = resData.message || resData.error || (typeof resData === 'string' ? resData : JSON.stringify(resData));
+      throw new Error(`[Resend API Error ${res.status}] ${errMsg}`);
+    }
+
+    return {
+      success: true,
+      messageId: resData.id || `resend_${Date.now()}`,
+      serverName: cfg.name || 'Resend HTTPS API'
+    };
   }
 
   function createTransporter(cfg: SmtpServerConfig, forcePort?: number, useServiceShortcut = false) {
@@ -678,9 +847,45 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
     attachments?: EmailAttachment[];
   }): Promise<{ success: boolean; messageId?: string; simulated?: boolean; serverName?: string; error?: string }> {
     const cfg = params.smtpConfig || getSmtpConfig(params.serverId);
-    const cleanPass = (cfg?.pass || '').replace(/\s+/g, '');
 
-    // Format attachments
+    // 1. Resend API Mode (HTTPS, No SMTP Port Restrictions)
+    if (cfg?.provider === 'resend' || (cfg?.apiKey && !cfg?.host)) {
+      const apiKey = (cfg?.apiKey || settings.resendApiKey || process.env.RESEND_API_KEY || '').trim();
+      if (!apiKey) {
+        console.log(`[RESEND SIMULATED] No Resend API key configured for "${cfg?.name || 'Resend'}". Simulated email sent to ${params.to}`);
+        return {
+          success: true,
+          simulated: true,
+          serverName: cfg?.name || 'Resend API (Simulated)',
+          messageId: `sim_resend_${Date.now()}`
+        };
+      }
+
+      try {
+        const resendResult = await sendViaResendApi(apiKey, cfg, {
+          to: params.to,
+          cc: params.cc,
+          bcc: params.bcc,
+          subject: params.subject,
+          html: params.html,
+          text: params.text,
+          attachments: params.attachments
+        });
+        console.log(`[RESEND OUTBOUND SUCCESS] Email delivered to ${params.to} (ID: ${resendResult.messageId}) via ${resendResult.serverName}`);
+        return {
+          success: true,
+          simulated: false,
+          serverName: resendResult.serverName,
+          messageId: resendResult.messageId
+        };
+      } catch (err: any) {
+        console.error(`[RESEND OUTBOUND ERROR] Failed sending to ${params.to}:`, err.message);
+        throw err;
+      }
+    }
+
+    // 2. SMTP Relay Mode (Nodemailer fallback)
+    const cleanPass = (cfg?.pass || '').replace(/\s+/g, '');
     const formattedAttachments = params.attachments?.map(att => {
       if (att.encoding === 'base64') {
         return {
@@ -697,7 +902,7 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
     });
 
     if (!cfg || !cfg.user || !cleanPass) {
-      console.log(`[SMTP SIMULATED] No app password configured for server "${cfg?.name || 'Default'}". Simulated email sent to ${params.to}`);
+      console.log(`[SMTP SIMULATED] No password/key configured for server "${cfg?.name || 'Default'}". Simulated email sent to ${params.to}`);
       return {
         success: true,
         simulated: true,
@@ -764,6 +969,16 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
         findings: [...audit.findings],
         status: 'Notified',
         reminderCount: 0,
+        emailSentCount: 1,
+        emailLogs: [
+          {
+            sentAt: dispatchedAt,
+            recipient: spocMail || audit.ref || 'spoc@casagrand.co.in',
+            type: 'initial_dispatch',
+            status: 'Delivered',
+            subject: `[CAPA Required - 72h SLA] Process Audit Findings: ${audit.auditId} - ${audit.dept}`
+          }
+        ],
         response: {}
       };
 
@@ -819,7 +1034,7 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
           serverId: smtpServerId,
           to: newTask.spocMail || 'spoc@casagrand.co.in',
           cc: newTask.hodMail,
-          subject: `🚨 [CAPA Required - 72h SLA] Process Audit Findings: ${audit.auditId} - ${audit.dept}`,
+          subject: `[CAPA Required - 72h SLA] Process Audit Findings: ${audit.auditId} - ${audit.dept}`,
           html: emailHtml,
           attachments: outboundAttachments
         });
@@ -882,17 +1097,77 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
     }
   });
 
-  // TASK: Send Reminder
-  app.post('/api/tasks/:id/reminder', (req: Request, res: Response, next: NextFunction) => {
+  // TASK: Send Reminder / Action Email to SPOC
+  app.post('/api/tasks/:id/reminder', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
+      const { message, customSubject } = req.body || {};
       const task = tasks.find(t => t.taskId === id || t.auditId === id);
       if (!task) {
         res.status(404).json({ error: 'Task not found' });
         return;
       }
       task.reminderCount = (task.reminderCount || 0) + 1;
-      res.json({ success: true, reminderCount: task.reminderCount });
+      task.emailSentCount = (task.emailSentCount || task.reminderCount || 1) + 1;
+      
+      const sentTime = new Date().toISOString();
+      const subject = customSubject || `Action Reminder #${task.reminderCount}: CAPA Pending for ${task.dept} (${task.taskId})`;
+      
+      if (!task.emailLogs) {
+        task.emailLogs = [
+          {
+            sentAt: task.dispatchedAt,
+            recipient: task.spocMail || 'spoc@casagrand.co.in',
+            type: 'initial_dispatch',
+            status: 'Delivered',
+            subject: `[CAPA Required] Process Audit Findings: ${task.auditId} - ${task.dept}`
+          }
+        ];
+      }
+
+      // Outbound email attempt via active email engine
+      let mailStatus = 'Delivered';
+      try {
+        if (task.spocMail) {
+          const directTokenLink = `http://localhost:3000/?token=${task.token}`;
+          const reminderHtml = `
+            <div style="font-family: Arial, sans-serif; padding: 20px; color: #1e293b;">
+              <h2 style="color: #d97706;">Action Reminder #${task.reminderCount} — CAPA Submission Pending</h2>
+              <p>Dear SPOC (${task.spocName || task.dept}),</p>
+              <p>This is a follow-up notice regarding open findings for <strong>${task.dept} (${task.fn})</strong> on audit <strong>${task.auditId}</strong> (Task: ${task.taskId}).</p>
+              ${message ? `<blockquote style="background: #f1f5f9; padding: 12px; border-left: 4px solid #d97706; margin: 16px 0;">${message}</blockquote>` : ''}
+              <p>Please log in and submit the Root Cause, CAPA, and Correction actions:</p>
+              <p><a href="${directTokenLink}" style="display: inline-block; background: #2563eb; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold;">Respond to Action Items &rarr;</a></p>
+              <p style="font-size: 12px; color: #64748b; margin-top: 24px;">Audit Compliance Team • Casagrand Builder Pvt Ltd</p>
+            </div>
+          `;
+          await sendOutboundMail({
+            to: task.spocMail,
+            cc: task.hodMail,
+            subject,
+            html: reminderHtml
+          });
+        }
+      } catch (mailErr: any) {
+        console.warn(`[REMINDER MAIL WARNING] Failed sending reminder to ${task.spocMail}:`, mailErr.message);
+        mailStatus = `Error: ${mailErr.message}`;
+      }
+
+      task.emailLogs.push({
+        sentAt: sentTime,
+        recipient: task.spocMail || 'spoc@casagrand.co.in',
+        type: 'reminder',
+        status: mailStatus,
+        subject
+      });
+
+      res.json({
+        success: true,
+        reminderCount: task.reminderCount,
+        emailSentCount: task.emailSentCount,
+        emailLogs: task.emailLogs,
+        task
+      });
     } catch (err) {
       next(err);
     }
@@ -916,10 +1191,92 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
   });
 
   // TEST SMTP CONNECTION & SEND VERIFICATION EMAIL
+  // TEST EMAIL / SMTP SERVER CONNECTION & DELIVER VERIFICATION
   app.post('/api/email/test-smtp', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { smtpConfig, testRecipient } = req.body;
-      if (!smtpConfig || !smtpConfig.user || !smtpConfig.pass) {
+      if (!smtpConfig) {
+        res.status(400).json({ error: 'Email configuration is required' });
+        return;
+      }
+
+      const recipient = testRecipient || smtpConfig.fromEmail || smtpConfig.user || 'delivered@resend.dev';
+
+      // 1. Resend API Mode Testing
+      if (smtpConfig.provider === 'resend' || (smtpConfig.apiKey && !smtpConfig.host)) {
+        const apiKey = (smtpConfig.apiKey || settings.resendApiKey || process.env.RESEND_API_KEY || '').trim();
+        if (!apiKey) {
+          res.status(400).json({
+            error: 'Resend API Key is required. Please paste your Resend API Key (starts with "re_") in the configuration field.'
+          });
+          return;
+        }
+
+        const testHtml = `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #ffffff;">
+            <div style="background: #e11d48; padding: 20px 24px; color: #ffffff;">
+              <h2 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">CASAGRAND PROCESS QUALITY AUDIT</h2>
+              <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Resend HTTPS Email API Integration Verification</p>
+            </div>
+            <div style="padding: 24px; color: #1e293b; font-size: 14px; line-height: 1.6;">
+              <p style="margin-top: 0; font-weight: 700; color: #059669; font-size: 16px;">
+                🚀 Resend API Connection Verified Successfully!
+              </p>
+              <p>This verification confirms that your Resend API integration is authenticated and ready to deliver audit notices, CAPA alerts, and reports via HTTPS without SMTP port restrictions.</p>
+              <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0;">
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                  <td style="padding: 10px 14px; color: #64748b; font-weight: 600; width: 140px;">Channel:</td>
+                  <td style="padding: 10px 14px; color: #0f172a; font-weight: 600;">Resend HTTPS API (Port 443)</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                  <td style="padding: 10px 14px; color: #64748b; font-weight: 600;">Sender Address:</td>
+                  <td style="padding: 10px 14px; color: #0f172a;">${smtpConfig.fromEmail || 'onboarding@resend.dev'}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                  <td style="padding: 10px 14px; color: #64748b; font-weight: 600;">Recipient:</td>
+                  <td style="padding: 10px 14px; color: #0f172a;">${recipient}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 14px; color: #64748b; font-weight: 600;">Verified At:</td>
+                  <td style="padding: 10px 14px; color: #0f172a;">${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST</td>
+                </tr>
+              </table>
+              <p style="font-size: 12px; color: #64748b; margin-bottom: 0;">
+                All audit dispatches and CAPA notifications will now route reliably through Resend HTTPS API.
+              </p>
+            </div>
+          </div>
+        `;
+
+        try {
+          const resendResult = await sendViaResendApi(apiKey, smtpConfig, {
+            to: recipient,
+            subject: '🚀 Casagrand Process Audit: Resend API Connection Verified',
+            html: testHtml
+          });
+
+          res.json({
+            success: true,
+            message: `Resend API verified! Test email delivered to ${recipient} (ID: ${resendResult.messageId})`,
+            messageId: resendResult.messageId,
+            verifiedAt: new Date().toISOString()
+          });
+          return;
+        } catch (resendErr: any) {
+          console.error('[RESEND TEST ERROR]:', resendErr);
+          let errorMsg = resendErr.message || 'Resend API test failed';
+          if (errorMsg.includes('401') || errorMsg.includes('API key')) {
+            errorMsg = 'Resend Authentication Failed: Invalid or revoked API Key. Please verify your Resend API Key at https://resend.com/api-keys';
+          } else if (errorMsg.includes('domain') || errorMsg.includes('not verified') || errorMsg.includes('validation_error')) {
+            errorMsg = `Resend Domain Restriction: ${errorMsg}. Note: In Resend free sandbox, sender "from" must be "onboarding@resend.dev" or your verified domain.`;
+          }
+          res.status(400).json({ error: errorMsg });
+          return;
+        }
+      }
+
+      // 2. SMTP Mode Testing (Legacy / Fallback)
+      if (!smtpConfig.user || !smtpConfig.pass) {
         res.status(400).json({ error: 'SMTP username/email and App Password are required' });
         return;
       }
@@ -940,7 +1297,7 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
           try {
             transporter = createTransporter(smtpConfig, altPort);
             await transporter.verify();
-            verifyErr = null; // Succeeded on alternative port
+            verifyErr = null;
           } catch (retryErr: any) {
             verifyErr = retryErr;
             // Attempt 3: Try nodemailer 'gmail' built-in service definition
@@ -960,7 +1317,6 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
         throw verifyErr;
       }
 
-      const recipient = testRecipient || smtpConfig.user;
       const testHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
           <div style="background: #e11d48; padding: 18px 24px; color: #ffffff;">
@@ -975,7 +1331,7 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
             <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0;">
               <tr style="border-bottom: 1px solid #e2e8f0;">
                 <td style="padding: 10px 14px; color: #64748b; font-weight: 600; width: 140px;">Server Label:</td>
-                <td style="padding: 10px 14px; color: #0f172a; font-weight: 600;">${smtpConfig.name || 'Gmail SMTP'}</td>
+                <td style="padding: 10px 14px; color: #0f172a; font-weight: 600;">${smtpConfig.name || 'SMTP Server'}</td>
               </tr>
               <tr style="border-bottom: 1px solid #e2e8f0;">
                 <td style="padding: 10px 14px; color: #64748b; font-weight: 600;">Provider / Host:</td>
@@ -991,7 +1347,7 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
               </tr>
             </table>
             <p style="font-size: 12px; color: #64748b; margin-bottom: 0;">
-              Audit dispatch notices, CAPA alerts, and reminders will now be sent automatically through this verified relay.
+              Audit dispatch notices, CAPA alerts, and reminders will now be sent automatically through this relay.
             </p>
           </div>
         </div>
@@ -1018,7 +1374,7 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
       if (rawMsg.includes('Username and Password not accepted') || rawMsg.includes('BadCredentials') || rawMsg.includes('535-5.7.8') || rawMsg.includes('535 5.7.8') || err.code === 'EAUTH') {
         message = 'Gmail Authentication Failed (535-5.7.8): Google rejected the App Password. Checklist: 1) Ensure "2-Step Verification" is ON at https://myaccount.google.com/security. 2) Generate a dedicated 16-character key at https://myaccount.google.com/apppasswords. 3) Ensure your sender email matches the Google account.';
       } else if (err.code === 'ETIMEDOUT' || err.code === 'ECONNREFUSED' || err.code === 'ESOCKET' || err.code === 'ENETUNREACH') {
-        message = `Network Connection Timeout (${err.code || 'ETIMEDOUT'}): Direct outbound TCP connection to ${req.body?.smtpConfig?.host || 'smtp.gmail.com'}:${req.body?.smtpConfig?.port || 587} timed out. This occurs when local/cloud sandboxes restrict outbound SMTP ports. (Dispatches will use simulation fallback automatically when live relay is unreachable).`;
+        message = `Network Connection Timeout (${err.code || 'ETIMEDOUT'}): Outbound TCP socket to ${req.body?.smtpConfig?.host || 'smtp.gmail.com'}:${req.body?.smtpConfig?.port || 587} timed out. Tip: Switch to Resend API preset to bypass SMTP port restrictions completely.`;
       } else if (err.code === 'EAI_AGAIN' || err.code === 'ENOTFOUND') {
         message = `DNS Resolution Failure (${err.code}): Could not resolve mail host "${req.body?.smtpConfig?.host}". Check host spelling.`;
       }

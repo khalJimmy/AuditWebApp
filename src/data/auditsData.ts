@@ -90,6 +90,16 @@ export const INITIAL_TASKS: AuditTask[] = [
     findings: INITIAL_AUDITS[0].findings,
     status: 'Notified',
     reminderCount: 0,
+    emailSentCount: 1,
+    emailLogs: [
+      {
+        sentAt: new Date().toISOString(),
+        recipient: 'jayalalitha@casagrand.co.in',
+        type: 'initial_dispatch',
+        status: 'Delivered',
+        subject: '[CAPA Required - 72h SLA] Process Audit Findings: AUD-2026-08-001 - MIS'
+      }
+    ],
     response: {}
   }
 ];

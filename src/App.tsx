@@ -45,7 +45,20 @@ export function App() {
     }
   }, []);
 
-  const [activeTab, setActiveTab] = useState<string>('dash');
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    try {
+      return localStorage.getItem('casagrand_active_tab') || 'dash';
+    } catch {
+      return 'dash';
+    }
+  });
+
+  const handleSelectTab = (tab: string) => {
+    setActiveTab(tab);
+    try {
+      localStorage.setItem('casagrand_active_tab', tab);
+    } catch {}
+  };
 
   // Selected plan for starting an audit
   const [selectedPlanForAudit, setSelectedPlanForAudit] = useState<PlanItem | null>(null);
@@ -65,16 +78,39 @@ export function App() {
   const [showUserModal, setShowUserModal] = useState<boolean>(false);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
 
-  // Set default tab based on user role when logged in
+  // Validate and preserve active tab based on user role when logged in (without resetting halfway)
+  const prevUserRoleRef = React.useRef<string | null>(null);
+  const prevUserIdRef = React.useRef<string | null>(null);
+
   useEffect(() => {
-    if (user) {
-      if (user.role === 'spoc') {
-        setActiveTab('spoc');
-      } else {
-        setActiveTab('dash');
-      }
+    if (!user) {
+      prevUserIdRef.current = null;
+      prevUserRoleRef.current = null;
+      return;
     }
-  }, [user]);
+
+    const role = user.role || 'spoc';
+    const allowedTabsByRole: Record<string, string[]> = {
+      admin: ['dash', 'plan', 'audit', 'dispatch', 'tracker', 'records', 'depts', 'users', 'settings'],
+      auditor: ['dash', 'plan', 'audit', 'records'],
+      spoc: ['spoc'],
+      hod: ['dash', 'tracker', 'records']
+    };
+
+    const allowed = allowedTabsByRole[role] || allowedTabsByRole['admin'];
+
+    // Only switch tabs if the current tab is invalid for the user's role OR on fresh initial login with no saved tab
+    if (!allowed.includes(activeTab)) {
+      const defaultTab = role === 'spoc' ? 'spoc' : 'dash';
+      setActiveTab(defaultTab);
+      try {
+        localStorage.setItem('casagrand_active_tab', defaultTab);
+      } catch {}
+    }
+
+    prevUserIdRef.current = user.id;
+    prevUserRoleRef.current = role;
+  }, [user?.id, user?.role, activeTab]);
 
   // Handle direct link overlay close
   if (urlToken) {
@@ -164,7 +200,7 @@ export function App() {
       <Header
         currentUser={user}
         activeTab={activeTab}
-        onSelectTab={setActiveTab}
+        onSelectTab={handleSelectTab}
         onLogout={logout}
       />
 
@@ -176,7 +212,7 @@ export function App() {
             tasks={auditData.tasks}
             plans={auditData.plans}
             depts={auditData.depts}
-            onSelectTab={setActiveTab}
+            onSelectTab={handleSelectTab}
             onToast={auditData.addToast}
           />
         )}
@@ -195,7 +231,7 @@ export function App() {
             onDeletePlan={auditData.deletePlan}
             onOpenAuditFormForPlan={plan => {
               setSelectedPlanForAudit(plan);
-              setActiveTab('audit');
+              handleSelectTab('audit');
             }}
             onToast={auditData.addToast}
           />

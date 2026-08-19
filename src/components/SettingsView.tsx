@@ -74,7 +74,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
           <div className="ps">SLA TAT · Outgoing SMTP Mail Servers · Planner &amp; SLA Reminder Templates · Metrics</div>
         </div>
-        <button className="btn btn-g" onClick={() => handleSave()} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+        <button type="button" className="btn btn-g" onClick={() => handleSave()} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
           <Save size={13} />
           <span>Save Settings</span>
         </button>

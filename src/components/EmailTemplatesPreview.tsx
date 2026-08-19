@@ -223,13 +223,13 @@ export const EmailTemplatesPreview: React.FC<EmailTemplatesPreviewProps> = ({
       {/* TWO COLUMN PREVIEW + VARIABLE CUSTOMIZER */}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.8fr) minmax(0, 1.2fr)', gap: '16px', alignItems: 'start' }}>
         {/* PREVIEW FRAME */}
-        <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden', background: '#ffffff', minHeight: '480px' }}>
-          <div style={{ background: 'var(--surface2)', padding: '8px 12px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11.5px', color: 'var(--muted)' }}>
+        <div style={{ border: '1px solid var(--border)', borderRadius: '6px', overflow: 'hidden', background: '#ffffff', minHeight: '520px', boxShadow: 'var(--sh1)' }}>
+          <div style={{ background: 'var(--surface2)', padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11.5px', color: 'var(--muted)' }}>
             <span>
-              <strong>To:</strong> {mockData.spocEmail} &nbsp;|&nbsp; <strong>CC:</strong> {mockData.hodEmail}
+              <strong style={{ color: 'var(--ink)' }}>To:</strong> {mockData.spocEmail} &nbsp;|&nbsp; <strong style={{ color: 'var(--ink)' }}>CC:</strong> {mockData.hodEmail}
             </span>
-            <span className="badge bb" style={{ fontSize: '10px' }}>
-              {activeTab === 'planner' ? 'Planner Template' : 'SLA Clock Template'}
+            <span className="badge bb" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+              {activeTab === 'planner' ? 'Schedule Notification' : 'CAPA Action Notice'}
             </span>
           </div>
 
@@ -237,10 +237,10 @@ export const EmailTemplatesPreview: React.FC<EmailTemplatesPreviewProps> = ({
             <iframe
               title="Email Template Preview"
               srcDoc={activeHtml}
-              style={{ width: '100%', height: '520px', border: 'none', background: '#f8fafc' }}
+              style={{ width: '100%', height: '540px', border: 'none', background: '#f8fafc', display: 'block' }}
             />
           ) : (
-            <pre style={{ padding: '14px', fontSize: '11px', color: 'var(--ink)', background: 'var(--surface2)', whiteSpace: 'pre-wrap', fontFamily: 'monospace', margin: 0, maxHeight: '520px', overflowY: 'auto' }}>
+            <pre style={{ padding: '14px', fontSize: '11px', color: 'var(--ink)', background: 'var(--surface2)', whiteSpace: 'pre-wrap', fontFamily: 'ui-monospace, monospace', margin: 0, maxHeight: '540px', overflowY: 'auto' }}>
               {activeHtml}
             </pre>
           )}

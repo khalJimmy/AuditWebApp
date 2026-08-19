@@ -11,8 +11,19 @@ export function h6(str: string): string {
 export const INITIAL_USERS: User[] = [
   { 
     id: 'u1', 
-    name: 'Audit Lead (Admin)', 
+    name: 'Jim Elliot (Audit Lead & Admin)', 
     username: 'admin', 
+    email: 'jimelliot.sf@casagrand.co.in',
+    pw: h6('Audit@2026'), 
+    role: 'admin', 
+    zone: '', 
+    depts: [] 
+  },
+  { 
+    id: 'u1_direct', 
+    name: 'Jim Elliot (Casagrand)', 
+    username: 'jimelliot.sf@casagrand.co.in', 
+    email: 'jimelliot.sf@casagrand.co.in',
     pw: h6('Audit@2026'), 
     role: 'admin', 
     zone: '', 

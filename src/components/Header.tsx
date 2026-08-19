@@ -101,6 +101,7 @@ export const Header: React.FC<HeaderProps> = ({
             const IconComponent = item ? item.icon : null;
             return (
               <button
+                type="button"
                 key={tab}
                 className={`nb ${activeTab === tab ? 'on' : ''}`}
                 onClick={() => handleTabSelect(tab)}
@@ -125,7 +126,7 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             </div>
           </div>
-          <button className="signout" onClick={onLogout} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+          <button type="button" className="signout" onClick={onLogout} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
             <LogOut size={13} />
             <span>Sign Out</span>
           </button>

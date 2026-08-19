@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, SmtpServerConfig } from '../types';
+import { Settings, SmtpServerConfig, EmailProviderType } from '../types';
 import { api } from '../services/api';
 import {
   Mail,
@@ -15,7 +15,10 @@ import {
   AlertTriangle,
   Zap,
   Loader2,
-  Star
+  Star,
+  ExternalLink,
+  ShieldCheck,
+  Send
 } from 'lucide-react';
 
 interface SmtpSettingsCardProps {
@@ -35,22 +38,34 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
   selectedServerId,
   onSelectServerId
 }) => {
+  const defaultEmail = currentUserEmail || settings.systemEmail || 'onboarding@resend.dev';
+
   const initialServers: SmtpServerConfig[] = settings.smtpServers && settings.smtpServers.length > 0
     ? settings.smtpServers
     : [
         {
-          id: 'smtp_gmail_default',
-          name: 'Gmail SMTP (Google Workspace / @gmail.com)',
+          id: 'cfg_resend_default',
+          name: 'Resend HTTPS API (Primary Cloud Delivery)',
+          provider: 'resend',
+          apiKey: settings.resendApiKey || '',
+          fromName: 'Casagrand Quality & Process Audit',
+          fromEmail: 'onboarding@resend.dev',
+          isDefault: true,
+          status: 'untested'
+        },
+        {
+          id: 'cfg_gmail_backup',
+          name: 'Gmail / Google Workspace Relay (Fallback)',
           provider: 'gmail',
           host: 'smtp.gmail.com',
           port: 587,
           secure: false,
-          user: currentUserEmail || settings.systemEmail || 'sfjimelliot@gmail.com',
-          pass: '',
+          user: 'jimelliot.sf@casagrand.co.in',
+          pass: 'ftgm nuwx tdrz pyfs',
           fromName: 'Casagrand Quality & Process Audit',
-          fromEmail: currentUserEmail || settings.systemEmail || 'sfjimelliot@gmail.com',
-          isDefault: true,
-          status: 'untested'
+          fromEmail: 'jimelliot.sf@casagrand.co.in',
+          isDefault: false,
+          status: 'verified'
         }
       ];
 
@@ -58,28 +73,24 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
   const [editingServerId, setEditingServerId] = useState<string | null>(null);
   const [isAddingNew, setIsAddingNew] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [showAppPassHelp, setShowAppPassHelp] = useState<boolean>(false);
+  const [showApiKeyHelp, setShowApiKeyHelp] = useState<boolean>(false);
 
   // Edit / Add Form Buffer
   const [editForm, setEditForm] = useState<SmtpServerConfig>({
-    id: 'smtp_new',
-    name: 'Gmail SMTP Relay',
-    provider: 'gmail',
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false,
-    user: currentUserEmail || settings.systemEmail || 'sfjimelliot@gmail.com',
-    pass: '',
+    id: 'cfg_resend_new',
+    name: 'Resend Cloud Delivery',
+    provider: 'resend',
+    apiKey: '',
     fromName: 'Casagrand Quality & Process Audit',
-    fromEmail: currentUserEmail || settings.systemEmail || 'sfjimelliot@gmail.com',
+    fromEmail: 'onboarding@resend.dev',
     isDefault: false,
     status: 'untested'
   });
 
   // Test Connection State
-  const [testRecipient, setTestRecipient] = useState<string>(currentUserEmail || settings.systemEmail || 'sfjimelliot@gmail.com');
+  const [testRecipient, setTestRecipient] = useState<string>(currentUserEmail || 'delivered@resend.dev');
   const [isTesting, setIsTesting] = useState<boolean>(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string; verifiedAt?: string } | null>(null);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string; messageId?: string; verifiedAt?: string } | null>(null);
 
   const activeServer = servers.find(s => s.id === selectedServerId) || servers.find(s => s.isDefault) || servers[0];
 
@@ -89,63 +100,57 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
     setEditForm({ ...server });
   };
 
-  const handleStartAdd = () => {
-    const newId = `smtp_${Date.now()}`;
+  const handleStartAdd = (presetType: EmailProviderType = 'resend') => {
+    const newId = `cfg_${presetType}_${Date.now()}`;
     setEditingServerId(newId);
     setIsAddingNew(true);
-    setEditForm({
-      id: newId,
-      name: `Outgoing Relay #${servers.length + 1}`,
-      provider: 'gmail',
-      host: 'smtp.gmail.com',
-      port: 587,
-      secure: false,
-      user: currentUserEmail || settings.systemEmail || '',
-      pass: '',
-      fromName: 'Casagrand Quality & Process Audit',
-      fromEmail: currentUserEmail || settings.systemEmail || '',
-      isDefault: servers.length === 0,
-      status: 'untested'
-    });
+    if (presetType === 'resend') {
+      setEditForm({
+        id: newId,
+        name: `Resend Cloud API #${servers.length + 1}`,
+        provider: 'resend',
+        apiKey: '',
+        fromName: 'Casagrand Quality & Process Audit',
+        fromEmail: 'onboarding@resend.dev',
+        isDefault: servers.length === 0,
+        status: 'untested'
+      });
+    } else {
+      setEditForm({
+        id: newId,
+        name: `SMTP Relay #${servers.length + 1}`,
+        provider: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
+        user: currentUserEmail || settings.systemEmail || '',
+        pass: '',
+        fromName: 'Casagrand Quality & Process Audit',
+        fromEmail: currentUserEmail || settings.systemEmail || '',
+        isDefault: servers.length === 0,
+        status: 'untested'
+      });
+    }
   };
 
-  const handleApplyPreset = (preset: 'gmail_tls' | 'gmail_ssl' | 'sendgrid' | 'brevo' | 'office365' | 'custom') => {
-    if (preset === 'gmail_tls') {
+  const handleApplyPreset = (preset: 'resend' | 'gmail_tls' | 'office365' | 'custom') => {
+    if (preset === 'resend') {
+      setEditForm(prev => ({
+        ...prev,
+        provider: 'resend',
+        name: 'Resend HTTPS API (Port 443)',
+        apiKey: prev.apiKey || '',
+        fromEmail: prev.fromEmail && !prev.fromEmail.includes('gmail') ? prev.fromEmail : 'onboarding@resend.dev',
+        fromName: prev.fromName || 'Casagrand Quality & Process Audit'
+      }));
+    } else if (preset === 'gmail_tls') {
       setEditForm(prev => ({
         ...prev,
         provider: 'gmail',
         host: 'smtp.gmail.com',
         port: 587,
         secure: false,
-        name: 'Gmail (Port 587 STARTTLS)'
-      }));
-    } else if (preset === 'gmail_ssl') {
-      setEditForm(prev => ({
-        ...prev,
-        provider: 'gmail',
-        host: 'smtp.gmail.com',
-        port: 465,
-        secure: true,
-        name: 'Gmail (Port 465 Direct SSL)'
-      }));
-    } else if (preset === 'sendgrid') {
-      setEditForm(prev => ({
-        ...prev,
-        provider: 'custom',
-        host: 'smtp.sendgrid.net',
-        port: 587,
-        secure: false,
-        name: 'SendGrid SMTP Relay',
-        user: 'apikey'
-      }));
-    } else if (preset === 'brevo') {
-      setEditForm(prev => ({
-        ...prev,
-        provider: 'custom',
-        host: 'smtp-relay.brevo.com',
-        port: 587,
-        secure: false,
-        name: 'Brevo (Sendinblue) Relay'
+        name: 'Gmail / Google Workspace (Port 587)'
       }));
     } else if (preset === 'office365') {
       setEditForm(prev => ({
@@ -154,27 +159,36 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
         host: 'smtp.office365.com',
         port: 587,
         secure: false,
-        name: 'Microsoft Office 365 Exchange'
+        name: 'Microsoft 365 Exchange Relay'
       }));
     } else {
       setEditForm(prev => ({
         ...prev,
         provider: 'custom',
-        host: 'smtp.yourdomain.com',
+        host: 'smtp.casagrand.co.in',
         port: 587,
-        secure: false
+        secure: false,
+        name: 'Custom SMTP Relay'
       }));
     }
   };
 
   const handleSaveServer = async () => {
     if (!editForm.name.trim()) {
-      alert('Please provide a server display name.');
+      alert('Please provide a configuration display name.');
       return;
     }
-    if (!editForm.user.trim()) {
-      alert('Please provide the account email or username.');
-      return;
+
+    if (editForm.provider === 'resend') {
+      if (!editForm.apiKey?.trim()) {
+        alert('Please provide your Resend API Key (starts with "re_").');
+        return;
+      }
+    } else {
+      if (!editForm.user?.trim()) {
+        alert('Please provide the account email or username.');
+        return;
+      }
     }
 
     let updatedList: SmtpServerConfig[];
@@ -199,12 +213,13 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
       const newSettings: Settings = {
         ...settings,
         smtpServers: updatedList,
-        activeSmtpServerId: editForm.isDefault ? editForm.id : selectedServerId
+        activeSmtpServerId: editForm.isDefault ? editForm.id : selectedServerId,
+        resendApiKey: editForm.provider === 'resend' && editForm.apiKey ? editForm.apiKey : settings.resendApiKey
       };
       await onUpdateSettings(newSettings);
-      onToast('✅ SMTP server configuration saved.');
+      onToast('Email configuration saved successfully.');
     } catch (err: any) {
-      onToast(`❌ Error saving SMTP server: ${err.message}`);
+      onToast(`Error saving email configuration: ${err.message}`);
     }
   };
 
@@ -216,26 +231,29 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
     setServers(updatedList);
     onSelectServerId(id);
 
+    const target = updatedList.find(s => s.id === id);
+
     try {
       const newSettings: Settings = {
         ...settings,
         smtpServers: updatedList,
-        activeSmtpServerId: id
+        activeSmtpServerId: id,
+        resendApiKey: target?.provider === 'resend' && target.apiKey ? target.apiKey : settings.resendApiKey
       };
       await onUpdateSettings(newSettings);
-      onToast(`Default SMTP Server updated.`);
+      onToast(`Active delivery channel switched to "${target?.name || id}".`);
     } catch (err: any) {
-      onToast(`Error setting default: ${err.message}`);
+      onToast(`Error setting active config: ${err.message}`);
     }
   };
 
   const handleDeleteServer = async (id: string) => {
     if (servers.length <= 1) {
-      alert('You must retain at least one configured SMTP server.');
+      alert('You must retain at least one configured email delivery channel.');
       return;
     }
     const target = servers.find(s => s.id === id);
-    if (!confirm(`Delete SMTP configuration "${target?.name || id}"?`)) return;
+    if (!confirm(`Delete configuration profile "${target?.name || id}"?`)) return;
 
     const updatedList = servers.filter(s => s.id !== id);
     if (target?.isDefault && updatedList.length > 0) {
@@ -253,19 +271,25 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
         activeSmtpServerId: updatedList[0].id
       };
       await onUpdateSettings(newSettings);
-      onToast('SMTP server removed.');
+      onToast('Configuration profile removed.');
     } catch (err: any) {
-      onToast(`Error removing server: ${err.message}`);
+      onToast(`Error removing configuration: ${err.message}`);
     }
   };
 
   const handleTestConnection = async () => {
     if (!activeServer) {
-      onToast('No active SMTP server selected.');
+      onToast('No active email delivery configuration selected.');
       return;
     }
-    if (!activeServer.user || !activeServer.pass) {
-      onToast('Please enter an Account Email and Google 16-digit App Password first.');
+
+    if (activeServer.provider === 'resend' && !activeServer.apiKey?.trim()) {
+      onToast('Please enter and save your Resend API Key (starts with "re_") first.');
+      return;
+    }
+
+    if (activeServer.provider !== 'resend' && (!activeServer.user || !activeServer.pass)) {
+      onToast('Please enter Account Email and App Password for SMTP relay first.');
       return;
     }
 
@@ -277,26 +301,27 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
       if (res.success) {
         setTestResult({
           success: true,
-          message: res.message || 'SMTP verified and test email delivered!',
+          message: res.message || 'Delivery channel verified and live test email dispatched!',
+          messageId: res.messageId,
           verifiedAt: res.verifiedAt || new Date().toISOString()
         });
-        const updatedList = servers.map(s => s.id === activeServer.id ? { ...s, status: 'verified' as const, lastTestedAt: new Date().toISOString() } : s);
+        const updatedList = servers.map(s => s.id === activeServer.id ? { ...s, status: 'verified' as const, lastTestedAt: new Date().toISOString(), testMessageId: res.messageId } : s);
         setServers(updatedList);
-        onToast(`Live SMTP verified! Test email sent to ${testRecipient}`);
+        onToast(`Live verification succeeded! Dispatched to ${testRecipient}`);
       } else {
         setTestResult({
           success: false,
-          message: 'Connection failed.'
+          message: 'Connection test failed.'
         });
       }
     } catch (err: any) {
       setTestResult({
         success: false,
-        message: err.message || 'Authentication error. Verify App Password.'
+        message: err.message || 'Verification failed. Please check your credentials.'
       });
       const updatedList = servers.map(s => s.id === activeServer.id ? { ...s, status: 'failed' as const } : s);
       setServers(updatedList);
-      onToast(`SMTP verification failed: ${err.message}`);
+      onToast(`Verification failed: ${err.message}`);
     } finally {
       setIsTesting(false);
     }
@@ -306,30 +331,46 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
     <div className="card">
       <div className="ctitle">
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Mail size={15} style={{ color: 'var(--brand)' }} />
-          <span>Outgoing Mail Servers (SMTP Relay)</span>
+          <Mail size={16} style={{ color: 'var(--brand)' }} />
+          <span>Outbound Email Delivery &amp; Resend API Configuration</span>
         </div>
         {!editingServerId && (
-          <button type="button" className="btn btn-o btn-xs" onClick={handleStartAdd} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-            <Plus size={12} />
-            <span>Add SMTP Server</span>
-          </button>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <button
+              type="button"
+              className="btn btn-g btn-xs"
+              onClick={() => handleStartAdd('resend')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+            >
+              <Zap size={12} />
+              <span>Connect Resend API</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-o btn-xs"
+              onClick={() => handleStartAdd('gmail')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+            >
+              <Plus size={12} />
+              <span>Add Custom Relay</span>
+            </button>
+          </div>
         )}
       </div>
 
-      <p style={{ fontSize: '12.5px', color: 'var(--muted)', marginBottom: '14px' }}>
-        Configure and select the outgoing SMTP mail relay (Gmail / Google Workspace, Office 365, or Custom SMTP) used for delivering Planner audit assignments, 72-hour SLA alerts, and attached findings reports to SPOCs and HODs.
+      <p style={{ fontSize: '12.5px', color: 'var(--muted)', marginBottom: '14px', lineHeight: '1.5' }}>
+        Configure the outbound delivery provider used for dispatching audit reports, CAPA notices, and 72-hour SLA reminders to SPOCs and HODs. <strong>Resend HTTPS API</strong> operates over standard port 443 with instant delivery and zero port restrictions.
       </p>
 
-      {/* SAVED SERVERS TABLE */}
+      {/* SAVED PROFILES & CONFIGURATIONS TABLE */}
       <div className="tbl-wrap" style={{ marginBottom: '16px' }}>
         <table className="tbl">
           <thead>
             <tr>
-              <th style={{ width: '40px', textAlign: 'center' }}>Select</th>
-              <th>Server Label</th>
-              <th>Host : Port</th>
-              <th>Account Email (Sender)</th>
+              <th style={{ width: '50px', textAlign: 'center' }}>Active</th>
+              <th>Channel / Profile Label</th>
+              <th>Provider &amp; Protocol</th>
+              <th>Sender Identifier</th>
               <th>Status</th>
               <th>Default</th>
               <th style={{ textAlign: 'right' }}>Actions</th>
@@ -338,33 +379,63 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
           <tbody>
             {servers.map(server => {
               const isSelected = server.id === selectedServerId;
-              const hasPassword = Boolean(server.pass && server.pass.trim());
+              const isResend = server.provider === 'resend';
+              const hasCredentials = isResend ? Boolean(server.apiKey?.trim()) : Boolean(server.pass?.trim());
+
               return (
-                <tr key={server.id} style={{ background: isSelected ? 'var(--surface2)' : undefined }}>
+                <tr
+                  key={server.id}
+                  style={{
+                    background: isSelected ? 'var(--surface2)' : undefined,
+                    borderLeft: isSelected ? '3px solid var(--brand)' : undefined
+                  }}
+                >
                   <td style={{ textAlign: 'center' }}>
                     <input
                       type="radio"
-                      name="selected_smtp"
+                      name="selected_email_config"
                       checked={isSelected}
                       onChange={() => onSelectServerId(server.id)}
-                      title="Select this server for testing and outbound dispatches"
+                      title="Select this configuration as the active outbound delivery channel"
+                      style={{ cursor: 'pointer' }}
                     />
                   </td>
                   <td>
-                    <strong>{server.name}</strong>
-                    {server.provider === 'gmail' && (
-                      <span style={{ fontSize: '11px', color: 'var(--muted)', display: 'block' }}>Gmail Relay</span>
+                    <div style={{ fontWeight: 600, color: 'var(--ink)' }}>{server.name}</div>
+                    {isResend ? (
+                      <span style={{ fontSize: '11px', color: '#059669', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                        <ShieldCheck size={11} /> HTTPS REST API (Port 443)
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                        SMTP {server.host}:{server.port}
+                      </span>
                     )}
                   </td>
                   <td>
-                    <code>{server.host}:{server.port}</code>
-                    {server.secure && <span style={{ fontSize: '10px', color: 'var(--blue)', marginLeft: '4px' }}>[SSL]</span>}
+                    {isResend ? (
+                      <span className="badge bg" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                        <Zap size={10} /> Resend API
+                      </span>
+                    ) : (
+                      <span className="badge bb" style={{ textTransform: 'capitalize' }}>
+                        {server.provider} Relay
+                      </span>
+                    )}
                   </td>
                   <td>
-                    {server.user || <span style={{ color: 'var(--muted)' }}>—</span>}
-                    {!hasPassword && (
-                      <span className="badge by" style={{ marginLeft: '6px', fontSize: '9.5px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                        <AlertTriangle size={10} /> App Password Required
+                    <div style={{ fontSize: '12px' }}>
+                      {isResend ? (
+                        <span>
+                          <strong>From:</strong> {server.fromEmail || 'onboarding@resend.dev'}
+                        </span>
+                      ) : (
+                        <span>{server.user || <span style={{ color: 'var(--muted)' }}>—</span>}</span>
+                      )}
+                    </div>
+                    {!hasCredentials && (
+                      <span className="badge by" style={{ marginTop: '2px', fontSize: '9.5px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                        <AlertTriangle size={10} /> {isResend ? 'API Key Missing' : 'Password Required'}
                       </span>
                     )}
                   </td>
@@ -392,10 +463,10 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
                       <button
                         type="button"
                         className="btn btn-o btn-xs"
-                        style={{ fontSize: '10.5px', padding: '2px 6px' }}
+                        style={{ fontSize: '10.5px', padding: '2px 8px' }}
                         onClick={() => handleSetDefault(server.id)}
                       >
-                        Set Default
+                        Set Active
                       </button>
                     )}
                   </td>
@@ -415,7 +486,7 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
                           className="btn btn-o btn-xs"
                           style={{ color: 'var(--red)', borderColor: '#fca5a5', display: 'inline-flex', alignItems: 'center' }}
                           onClick={() => handleDeleteServer(server.id)}
-                          title="Delete Server"
+                          title="Delete Configuration Profile"
                         >
                           <Trash2 size={11} />
                         </button>
@@ -429,59 +500,48 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
         </table>
       </div>
 
-      {/* EDIT / ADD CONFIGURATION FORM */}
+      {/* EDIT / ADD CONFIGURATION MODAL / CARD */}
       {editingServerId && (
         <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '16px', marginBottom: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              {isAddingNew ? <Plus size={14} /> : <Edit3 size={14} />}
-              {isAddingNew ? 'Add New SMTP Server Configuration' : `Edit Server: ${editForm.name}`}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ fontWeight: 700, fontSize: '13.5px', color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {isAddingNew ? <Plus size={15} style={{ color: 'var(--brand)' }} /> : <Edit3 size={15} style={{ color: 'var(--brand)' }} />}
+              {isAddingNew ? 'Create New Email Delivery Profile' : `Configure: ${editForm.name}`}
             </div>
-            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '11px', color: 'var(--muted)', alignSelf: 'center' }}>Presets:</span>
+
+            {/* Quick Provider Presets */}
+            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ fontSize: '11px', color: 'var(--muted)' }}>Presets:</span>
               <button
                 type="button"
-                className={`btn btn-xs ${editForm.provider === 'gmail' && editForm.port === 587 ? 'btn-r' : 'btn-o'}`}
+                className={`btn btn-xs ${editForm.provider === 'resend' ? 'btn-g' : 'btn-o'}`}
+                onClick={() => handleApplyPreset('resend')}
+                title="Resend HTTPS REST API (Recommended)"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+              >
+                <Zap size={11} /> Resend API
+              </button>
+              <button
+                type="button"
+                className={`btn btn-xs ${editForm.provider === 'gmail' ? 'btn-r' : 'btn-o'}`}
                 onClick={() => handleApplyPreset('gmail_tls')}
-                title="Google Gmail / Workspace STARTTLS"
+                title="Google Gmail / Workspace Relay"
               >
-                Gmail 587
-              </button>
-              <button
-                type="button"
-                className={`btn btn-xs ${editForm.provider === 'gmail' && editForm.port === 465 ? 'btn-r' : 'btn-o'}`}
-                onClick={() => handleApplyPreset('gmail_ssl')}
-                title="Google Gmail / Workspace SSL"
-              >
-                Gmail 465
-              </button>
-              <button
-                type="button"
-                className={`btn btn-xs ${editForm.host.includes('brevo') ? 'btn-r' : 'btn-o'}`}
-                onClick={() => handleApplyPreset('brevo')}
-                title="Brevo / Sendinblue Relay"
-              >
-                Brevo
-              </button>
-              <button
-                type="button"
-                className={`btn btn-xs ${editForm.host.includes('sendgrid') ? 'btn-r' : 'btn-o'}`}
-                onClick={() => handleApplyPreset('sendgrid')}
-                title="SendGrid API Relay"
-              >
-                SendGrid
+                Gmail SMTP
               </button>
               <button
                 type="button"
                 className={`btn btn-xs ${editForm.provider === 'office365' ? 'btn-r' : 'btn-o'}`}
                 onClick={() => handleApplyPreset('office365')}
+                title="Microsoft 365 Exchange"
               >
                 Office 365
               </button>
               <button
                 type="button"
-                className={`btn btn-xs ${editForm.provider === 'custom' && !editForm.host.includes('brevo') && !editForm.host.includes('sendgrid') ? 'btn-r' : 'btn-o'}`}
+                className={`btn btn-xs ${editForm.provider === 'custom' ? 'btn-r' : 'btn-o'}`}
                 onClick={() => handleApplyPreset('custom')}
+                title="Custom Mail Server"
               >
                 Custom
               </button>
@@ -490,111 +550,176 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
 
           <div className="fg c2" style={{ marginBottom: '12px' }}>
             <div className="field">
-              <label>Server Label / Display Name</label>
+              <label>Configuration Profile Label *</label>
               <input
                 type="text"
                 value={editForm.name}
                 onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                placeholder="e.g. Gmail Outgoing Relay"
-                required
-              />
-            </div>
-            <div className="field">
-              <label>SMTP Host &amp; Port</label>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <input
-                  type="text"
-                  style={{ flex: 3 }}
-                  value={editForm.host}
-                  onChange={e => setEditForm({ ...editForm, host: e.target.value })}
-                  placeholder="smtp.gmail.com"
-                />
-                <input
-                  type="number"
-                  style={{ flex: 1 }}
-                  value={editForm.port}
-                  onChange={e => setEditForm({ ...editForm, port: Number(e.target.value) || 587 })}
-                  placeholder="587"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="fg c2" style={{ marginBottom: '12px' }}>
-            <div className="field">
-              <label>Sender Account Email / Username *</label>
-              <input
-                type="email"
-                value={editForm.user}
-                onChange={e => setEditForm({ ...editForm, user: e.target.value, fromEmail: editForm.fromEmail || e.target.value })}
-                placeholder="e.g. sfjimelliot@gmail.com"
+                placeholder="e.g. Resend Production Cloud Delivery"
                 required
               />
             </div>
 
             <div className="field">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <label>16-Digit App Password *</label>
-                <button
-                  type="button"
-                  onClick={() => setShowAppPassHelp(!showAppPassHelp)}
-                  style={{ background: 'none', border: 'none', color: 'var(--brand)', fontSize: '10.5px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
-                >
-                  <HelpCircle size={11} /> {showAppPassHelp ? 'Hide Help' : 'How to get App Password?'}
-                </button>
-              </div>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={editForm.pass}
-                  onChange={e => setEditForm({ ...editForm, pass: e.target.value })}
-                  placeholder="xxxx xxxx xxxx xxxx"
-                  style={{ paddingRight: '36px' }}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--muted)' }}
-                  title={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                </button>
-              </div>
+              <label>Delivery Provider</label>
+              <select
+                value={editForm.provider}
+                onChange={e => {
+                  const prov = e.target.value as EmailProviderType;
+                  handleApplyPreset(prov === 'resend' ? 'resend' : prov === 'gmail' ? 'gmail_tls' : prov === 'office365' ? 'office365' : 'custom');
+                }}
+              >
+                <option value="resend">Resend HTTPS API (Recommended — Port 443)</option>
+                <option value="gmail">Google Workspace / Gmail Relay</option>
+                <option value="office365">Microsoft Office 365 Exchange</option>
+                <option value="custom">Custom SMTP Server</option>
+              </select>
             </div>
           </div>
 
-          {showAppPassHelp && (
-            <div style={{ background: '#fffbeb', border: '1px solid #fef08a', borderRadius: '6px', padding: '10px 14px', marginBottom: '12px', fontSize: '11.5px', color: '#92400e', lineHeight: '1.5' }}>
-              <strong>Google Account Security Notice:</strong> Google requires an App Password when sending from automated systems.
-              <ol style={{ margin: '4px 0 0 16px', padding: 0 }}>
-                <li>Go to <a href="https://myaccount.google.com/security" target="_blank" rel="noreferrer" style={{ color: 'var(--brand)', fontWeight: 600 }}>Google Account &gt; Security</a> and enable <strong>2-Step Verification</strong>.</li>
-                <li>Go to <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" style={{ color: 'var(--brand)', fontWeight: 600 }}>App Passwords</a>.</li>
-                <li>Enter App Name &ldquo;Casagrand Audit&rdquo; &rarr; Click Create &rarr; Paste the generated 16-character key here.</li>
-              </ol>
+          {/* RESEND API FIELDS */}
+          {editForm.provider === 'resend' ? (
+            <div>
+              <div className="field" style={{ marginBottom: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <label style={{ fontWeight: 600 }}>Resend API Key (starts with &ldquo;re_&rdquo;) *</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKeyHelp(!showApiKeyHelp)}
+                    style={{ background: 'none', border: 'none', color: 'var(--brand)', fontSize: '11px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                  >
+                    <HelpCircle size={12} /> {showApiKeyHelp ? 'Hide API Key Guide' : 'How to get Resend API Key?'}
+                  </button>
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={editForm.apiKey || ''}
+                    onChange={e => setEditForm({ ...editForm, apiKey: e.target.value.trim() })}
+                    placeholder="re_123456789_abcdefghijklmnopqrstuvwxyz"
+                    style={{ fontFamily: 'monospace', paddingRight: '40px' }}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--muted)' }}
+                    title={showPassword ? 'Hide API key' : 'Show API key'}
+                  >
+                    {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+              </div>
+
+              {showApiKeyHelp && (
+                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '12px 14px', marginBottom: '12px', fontSize: '12px', color: '#166534', lineHeight: '1.5' }}>
+                  <strong>How to get your free Resend API Key:</strong>
+                  <ol style={{ margin: '6px 0 0 18px', padding: 0 }}>
+                    <li>Sign up or log in at <a href="https://resend.com/api-keys" target="_blank" rel="noreferrer" style={{ color: '#15803d', fontWeight: 700, textDecoration: 'underline', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>resend.com/api-keys <ExternalLink size={10} /></a>.</li>
+                    <li>Click <strong>&ldquo;Create API Key&rdquo;</strong>, give it Full Access (e.g. <em>Casagrand Audit Dispatcher</em>).</li>
+                    <li>Copy the key (starts with <code>re_</code>) and paste it into the field above.</li>
+                    <li><strong>Domain notes:</strong> For testing without a custom domain, use <code>onboarding@resend.dev</code> as the From Address. Once your domain (e.g. <code>casagrand.co.in</code>) is verified on Resend, you can use any custom email address!</li>
+                  </ol>
+                </div>
+              )}
+
+              <div className="fg c2" style={{ marginBottom: '12px' }}>
+                <div className="field">
+                  <label>Sender From Email Address *</label>
+                  <input
+                    type="text"
+                    value={editForm.fromEmail || 'onboarding@resend.dev'}
+                    onChange={e => setEditForm({ ...editForm, fromEmail: e.target.value.trim() })}
+                    placeholder="onboarding@resend.dev or audit@casagrand.co.in"
+                    required
+                  />
+                  <span style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>
+                    Use <code>onboarding@resend.dev</code> for test sandbox, or your verified domain.
+                  </span>
+                </div>
+
+                <div className="field">
+                  <label>Sender Display Name</label>
+                  <input
+                    type="text"
+                    value={editForm.fromName || 'Casagrand Quality & Process Audit'}
+                    onChange={e => setEditForm({ ...editForm, fromName: e.target.value })}
+                    placeholder="Casagrand Quality & Process Audit"
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* LEGACY SMTP FIELDS */
+            <div>
+              <div className="fg c2" style={{ marginBottom: '12px' }}>
+                <div className="field">
+                  <label>SMTP Host &amp; Port</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="text"
+                      style={{ flex: 3 }}
+                      value={editForm.host || ''}
+                      onChange={e => setEditForm({ ...editForm, host: e.target.value })}
+                      placeholder="smtp.gmail.com"
+                    />
+                    <input
+                      type="number"
+                      style={{ flex: 1 }}
+                      value={editForm.port || 587}
+                      onChange={e => setEditForm({ ...editForm, port: Number(e.target.value) || 587 })}
+                      placeholder="587"
+                    />
+                  </div>
+                </div>
+
+                <div className="field">
+                  <label>Account Email / Username *</label>
+                  <input
+                    type="email"
+                    value={editForm.user || ''}
+                    onChange={e => setEditForm({ ...editForm, user: e.target.value, fromEmail: editForm.fromEmail || e.target.value })}
+                    placeholder="e.g. sfjimelliot@gmail.com"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="fg c2" style={{ marginBottom: '12px' }}>
+                <div className="field">
+                  <label>App Password / SMTP Secret *</label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={editForm.pass || ''}
+                      onChange={e => setEditForm({ ...editForm, pass: e.target.value })}
+                      placeholder="Google 16-character App Password"
+                      style={{ paddingRight: '36px' }}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--muted)' }}
+                      title={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="field">
+                  <label>From Email Address</label>
+                  <input
+                    type="email"
+                    value={editForm.fromEmail || ''}
+                    onChange={e => setEditForm({ ...editForm, fromEmail: e.target.value })}
+                    placeholder="sfjimelliot@gmail.com"
+                  />
+                </div>
+              </div>
             </div>
           )}
-
-          <div className="fg c2" style={{ marginBottom: '12px' }}>
-            <div className="field">
-              <label>Sender Display Name</label>
-              <input
-                type="text"
-                value={editForm.fromName}
-                onChange={e => setEditForm({ ...editForm, fromName: e.target.value })}
-                placeholder="Casagrand Quality & Process Audit"
-              />
-            </div>
-            <div className="field">
-              <label>From Email Address</label>
-              <input
-                type="email"
-                value={editForm.fromEmail}
-                onChange={e => setEditForm({ ...editForm, fromEmail: e.target.value })}
-                placeholder="sfjimelliot@gmail.com"
-              />
-            </div>
-          </div>
 
           <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '14px' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', cursor: 'pointer' }}>
@@ -603,15 +728,7 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
                 checked={editForm.isDefault}
                 onChange={e => setEditForm({ ...editForm, isDefault: e.target.checked })}
               />
-              <span>Set as Default Outbound Server</span>
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={editForm.secure}
-                onChange={e => setEditForm({ ...editForm, secure: e.target.checked })}
-              />
-              <span>Use SSL/TLS (Direct Port 465)</span>
+              <span>Set as Default Outbound Delivery Channel</span>
             </label>
           </div>
 
@@ -630,32 +747,45 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
               style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
             >
               <Save size={13} />
-              <span>Save SMTP Configuration</span>
+              <span>Save Configuration</span>
             </button>
           </div>
         </div>
       )}
 
-      {/* TEST CONNECTION & VERIFICATION BAR */}
+      {/* TEST CONNECTION & REAL DELIVERY VERIFICATION BAR */}
       <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '14px 16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
           <div>
             <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--ink)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-              <Zap size={13} style={{ color: 'var(--brand)' }} />
-              Test Selected SMTP Server ({activeServer?.name || 'Default'})
+              <Zap size={14} style={{ color: 'var(--brand)' }} />
+              Test Active Delivery Channel ({activeServer?.name || 'Resend API'})
             </span>
             <span style={{ fontSize: '11.5px', color: 'var(--muted)', display: 'block' }}>
-              Verify authentication and dispatch a live verification email.
+              Send an authenticated verification email to confirm credentials and deliverability.
             </span>
           </div>
-          {activeServer?.pass ? (
-            <span className="badge bg" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-              <CheckCircle2 size={10} /> Credentials Ready
-            </span>
+
+          {activeServer?.provider === 'resend' ? (
+            activeServer?.apiKey ? (
+              <span className="badge bg" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                <CheckCircle2 size={10} /> Resend Key Ready
+              </span>
+            ) : (
+              <span className="badge by" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                <AlertTriangle size={10} /> API Key Missing
+              </span>
+            )
           ) : (
-            <span className="badge by" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-              <AlertTriangle size={10} /> App Password Missing
-            </span>
+            activeServer?.pass ? (
+              <span className="badge bg" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                <CheckCircle2 size={10} /> Credentials Ready
+              </span>
+            ) : (
+              <span className="badge by" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                <AlertTriangle size={10} /> Password Missing
+              </span>
+            )
           )}
         </div>
 
@@ -677,11 +807,11 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
             {isTesting ? (
               <>
                 <Loader2 size={13} className="animate-spin" />
-                <span>Testing Connection...</span>
+                <span>Verifying Channel...</span>
               </>
             ) : (
               <>
-                <Zap size={13} />
+                <Send size={13} />
                 <span>Test Connection &amp; Send Verification</span>
               </>
             )}
@@ -705,21 +835,15 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
               {testResult.success ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
-              <span>{testResult.success ? 'Verification Succeeded' : 'Verification Failed'}</span>
+              <span>{testResult.success ? 'Verification Successful' : 'Verification Failed'}</span>
             </div>
             <div style={{ fontSize: '12px', lineHeight: '1.5' }}>
               {testResult.message}
             </div>
 
-            {!testResult.success && testResult.message.includes('Google rejected') && (
-              <div style={{ marginTop: '6px', padding: '8px 10px', background: '#fff', borderRadius: '4px', border: '1px solid #fee2e2', fontSize: '11.5px', color: '#7f1d1d' }}>
-                <strong>How to fix Gmail 535-5.7.8 error:</strong>
-                <ol style={{ margin: '4px 0 0 16px', padding: 0 }}>
-                  <li>Open <a href="https://myaccount.google.com/security" target="_blank" rel="noreferrer" style={{ color: 'var(--brand)', textDecoration: 'underline', fontWeight: 600 }}>Google Account Security</a> and verify <strong>2-Step Verification</strong> is ON.</li>
-                  <li>Open <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" style={{ color: 'var(--brand)', textDecoration: 'underline', fontWeight: 600 }}>Google App Passwords</a>.</li>
-                  <li>Enter app name <em>&ldquo;Casagrand Audit&rdquo;</em>, click <strong>Create</strong>, and copy the 16-character password (e.g. <code>abcd efgh ijkl mnop</code>).</li>
-                  <li>Click <strong>Edit</strong> on this server, paste the 16-character key, and click <strong>Save SMTP Configuration</strong>.</li>
-                </ol>
+            {testResult.messageId && (
+              <div style={{ fontSize: '11px', color: 'var(--muted)', fontFamily: 'monospace' }}>
+                Delivery ID: {testResult.messageId}
               </div>
             )}
           </div>

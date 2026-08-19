@@ -3,6 +3,7 @@ import { Department, ZoneName } from '../types.js';
 
 export class DepartmentCatalog {
   private byRefMap: Map<string, DepartmentModel>;
+  private byIdMap: Map<string, DepartmentModel>;
   private deptsList: DepartmentModel[];
 
   constructor(departments: (Department | DepartmentModel)[] = []) {
@@ -10,9 +11,13 @@ export class DepartmentCatalog {
       d instanceof DepartmentModel ? d : new DepartmentModel(d)
     );
     this.byRefMap = new Map();
+    this.byIdMap = new Map();
     this.deptsList.forEach((dept) => {
       if (dept.ref) {
         this.byRefMap.set(dept.ref.toLowerCase(), dept);
+      }
+      if (dept.id) {
+        this.byIdMap.set(dept.id.toLowerCase(), dept);
       }
     });
   }
@@ -23,6 +28,14 @@ export class DepartmentCatalog {
   getByRef(ref: string): DepartmentModel | undefined {
     if (!ref) return undefined;
     return this.byRefMap.get(ref.toLowerCase().trim());
+  }
+
+  /**
+   * Fast O(1) lookup by unique department ID.
+   */
+  getById(id: string): DepartmentModel | undefined {
+    if (!id) return undefined;
+    return this.byIdMap.get(id.toLowerCase().trim()) || this.getByRef(id);
   }
 
   /**

@@ -544,6 +544,7 @@ export const DeptModal: React.FC<DeptModalProps> = ({ onClose, onSave, editingDe
     }
 
     await onSave({
+      id: editingDept?.id || `dept_${ref.toLowerCase().trim()}`,
       ref: ref.toUpperCase().trim(),
       dept,
       fn: fn || dept,

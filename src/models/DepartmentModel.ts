@@ -1,6 +1,7 @@
 import { Department, ZoneName, ZoneContact } from '../types.js';
 
 export class DepartmentModel implements Department {
+  id?: string;
   ref: string;
   dept: string;
   fn: string;
@@ -11,6 +12,7 @@ export class DepartmentModel implements Department {
   zoneContacts?: Partial<Record<ZoneName, ZoneContact>>;
 
   constructor(data?: Partial<Department>) {
+    this.id = (data?.id || (data?.ref ? `dept_${data.ref.toLowerCase()}` : '')).trim();
     this.ref = (data?.ref || '').trim();
     this.dept = (data?.dept || '').trim();
     this.fn = (data?.fn || '').trim();
@@ -85,6 +87,7 @@ export class DepartmentModel implements Department {
    */
   toJSON(): Department {
     return {
+      id: this.id,
       ref: this.ref,
       dept: this.dept,
       fn: this.fn,

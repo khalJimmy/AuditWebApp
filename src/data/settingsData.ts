@@ -3,7 +3,7 @@ import { SystemSettings } from '../types.js';
 export const INITIAL_SETTINGS: SystemSettings = {
   tatHours: 72,
   defaultYear: '2026-27',
-  systemEmail: 'sfjimelliot@gmail.com',
+  systemEmail: 'jimelliot.sf@casagrand.co.in',
   dispatchTemplate: 'Dear SPOC,\n\nPlease review and submit Corrective Action Plans (CAPA) for open audit findings within 72 hours SLA.',
   reminderTemplate: 'Dear SPOC,\n\nThis is an urgent reminder that your audit findings resolution SLA deadline is approaching (<24h).',
   auditors: {
@@ -24,21 +24,32 @@ export const INITIAL_SETTINGS: SystemSettings = {
     { id: 'P10', title: 'Previous Audit Action Implementation', max: 100 }
   ],
   senderEmail: 'audit.pnc@casagrand.co.in',
+  resendApiKey: '',
   smtpServers: [
     {
-      id: 'smtp_gmail_default',
-      name: 'Gmail SMTP (Google Workspace / @gmail.com)',
+      id: 'cfg_resend_default',
+      name: 'Resend HTTPS API (Primary Cloud Delivery)',
+      provider: 'resend',
+      apiKey: '',
+      fromName: 'Casagrand Quality & Process Audit',
+      fromEmail: 'onboarding@resend.dev',
+      isDefault: true,
+      status: 'untested'
+    },
+    {
+      id: 'cfg_gmail_backup',
+      name: 'Gmail / Google Workspace (jimelliot.sf@casagrand.co.in)',
       provider: 'gmail',
       host: 'smtp.gmail.com',
       port: 587,
       secure: false,
-      user: 'sfjimelliot@gmail.com',
-      pass: '',
+      user: 'jimelliot.sf@casagrand.co.in',
+      pass: 'ftgm nuwx tdrz pyfs',
       fromName: 'Casagrand Quality & Process Audit',
-      fromEmail: 'sfjimelliot@gmail.com',
-      isDefault: true,
-      status: 'untested'
+      fromEmail: 'jimelliot.sf@casagrand.co.in',
+      isDefault: false,
+      status: 'verified'
     }
   ],
-  activeSmtpServerId: 'smtp_gmail_default'
+  activeSmtpServerId: 'cfg_resend_default'
 };

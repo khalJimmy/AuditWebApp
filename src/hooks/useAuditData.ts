@@ -41,24 +41,74 @@ export function useAuditData(currentUser: User | null) {
     setError(null);
     try {
       const isAdmin = currentUser.role === 'admin';
+      const isAuditor = currentUser.role === 'auditor';
       
+      const scopeParams = isAuditor ? { auditorId: currentUser.id, role: 'auditor' } : undefined;
+
       const [d, u, a, p, t, s] = await Promise.all([
-        api.getDepts(),
-        isAdmin ? api.getUsers() : Promise.resolve([currentUser]),
-        api.getAudits(),
-        api.getPlans(),
-        api.getTasks(),
+        api.getDepts(scopeParams),
+        isAdmin || isAuditor ? api.getUsers(scopeParams) : Promise.resolve([currentUser]),
+        api.getAudits(scopeParams),
+        api.getPlans(scopeParams),
+        api.getTasks(scopeParams),
         isAdmin ? api.getSettings() : Promise.resolve(null)
       ]);
 
-      setDepts(d);
-      setUsers(u);
+      // Auditor Scoping & Client-side Assurance:
+      // Remember and restrict auditor to only their departments and linked SPOCs/users
+      if (isAuditor) {
+        const auditorDepts = currentUser.depts || [];
+        const auditorZone = currentUser.zone || '';
+        const auditorName = (currentUser.name || '').toLowerCase();
 
-      // Filter audits/tasks based on user role if not admin
-      if (currentUser.role === 'spoc') {
+        // Filter departments to auditor's assigned departments
+        const filteredDepts = auditorDepts.length > 0
+          ? d.filter(dp => auditorDepts.includes(dp.ref) || auditorDepts.includes(dp.id || '') || auditorDepts.includes(dp.dept))
+          : d;
+
+        // Filter users to only admins, self, and SPOCs for the auditor's departments & zone
+        const filteredUsers = u.filter(user =>
+          user.role === 'admin' ||
+          user.id === currentUser.id ||
+          (user.role === 'spoc' && (
+            (!auditorZone || !user.zone || user.zone === auditorZone) &&
+            (user.depts?.some(deptRef => auditorDepts.includes(deptRef)) || auditorDepts.includes(user.name) || auditorDepts.includes(user.username))
+          ))
+        );
+
+        // Filter plans and audits
+        const filteredAudits = a.filter(audit =>
+          auditorDepts.includes(audit.ref) ||
+          auditorDepts.includes(audit.dept) ||
+          (auditorZone && audit.zone === auditorZone) ||
+          (audit.auditor && audit.auditor.toLowerCase().includes(auditorName)) ||
+          audit.submittedBy === currentUser.username
+        );
+
+        const filteredPlans = p.filter(plan =>
+          auditorDepts.includes(plan.ref) ||
+          auditorDepts.includes(plan.dept) ||
+          (auditorZone && plan.zone === auditorZone) ||
+          (plan.auditor && plan.auditor.toLowerCase().includes(auditorName))
+        );
+
+        const filteredTasks = t.filter(task =>
+          auditorDepts.includes(task.dept) ||
+          filteredDepts.some(dp => (dp.dept === task.dept || dp.fn === task.fn) && auditorDepts.includes(dp.ref))
+        );
+
+        setDepts(filteredDepts);
+        setUsers(filteredUsers);
+        setAudits(filteredAudits);
+        setPlans(filteredPlans);
+        setTasks(filteredTasks);
+      } else if (currentUser.role === 'spoc') {
         const userEmail = (currentUser.email || '').toLowerCase();
         const userDepts = currentUser.depts || [];
         const userUsername = (currentUser.username || '').toLowerCase();
+
+        setDepts(d);
+        setUsers(u);
 
         const filteredTasks = t.filter(task => 
           (task.spocMail && task.spocMail.toLowerCase() === userEmail) ||
@@ -75,6 +125,8 @@ export function useAuditData(currentUser: User | null) {
         setPlans(p);
         setTasks(filteredTasks);
       } else {
+        setDepts(d);
+        setUsers(u);
         setAudits(a);
         setPlans(p);
         setTasks(t);
@@ -87,24 +139,27 @@ export function useAuditData(currentUser: User | null) {
     } finally {
       setLoading(false);
     }
-  }, [currentUser]);
+  }, [currentUser?.id, currentUser?.role, currentUser?.email, currentUser?.username, currentUser?.depts, currentUser?.zone]);
+
+  const currentUserId = currentUser?.id;
+  const currentUserRole = currentUser?.role;
 
   useEffect(() => {
-    if (currentUser) {
+    if (currentUserId) {
       fetchAll();
     }
-  }, [currentUser, fetchAll]);
+  }, [currentUserId, currentUserRole, fetchAll]);
 
   // Actions
   const submitAudit = async (audit: Partial<AuditReport>) => {
     try {
       const res = await api.submitAudit(audit);
       await fetchAll();
-      addToast('✅ Audit report submitted successfully');
+      addToast('Audit report submitted successfully');
       return res.audit;
     } catch (err: any) {
       setError(err.message);
-      addToast(`❌ Error: ${err.message}`);
+      addToast(`Error: ${err.message}`);
       throw err;
     }
   };
@@ -113,11 +168,11 @@ export function useAuditData(currentUser: User | null) {
     try {
       const res = await api.savePlan(plan);
       await fetchAll();
-      addToast('✅ Audit schedule saved successfully');
+      addToast('Audit schedule saved successfully');
       return res.plan;
     } catch (err: any) {
       setError(err.message);
-      addToast(`❌ Error: ${err.message}`);
+      addToast(`Error: ${err.message}`);
       throw err;
     }
   };
@@ -126,10 +181,10 @@ export function useAuditData(currentUser: User | null) {
     try {
       await api.deletePlan(id);
       await fetchAll();
-      addToast('✅ Schedule removed successfully');
+      addToast('Schedule removed successfully');
     } catch (err: any) {
       setError(err.message);
-      addToast(`❌ Error: ${err.message}`);
+      addToast(`Error: ${err.message}`);
       throw err;
     }
   };
@@ -146,14 +201,14 @@ export function useAuditData(currentUser: User | null) {
       const res = await api.dispatchAudit(params);
       await fetchAll();
       if (res.realEmailDelivered) {
-        addToast(`✉️ Real Email delivered to ${params.spocMail || 'SPOC'} via ${res.serverName || 'SMTP'}!`);
+        addToast(`Email delivered to ${params.spocMail || 'SPOC'} via ${res.serverName || 'SMTP'}`);
       } else {
-        addToast('🚀 Audit findings dispatched & 72h SLA clock started');
+        addToast('Audit findings dispatched and 72h SLA clock initiated');
       }
       return res.task;
     } catch (err: any) {
       setError(err.message);
-      addToast(`❌ Dispatch Error: ${err.message}`);
+      addToast(`Dispatch Error: ${err.message}`);
       throw err;
     }
   };
@@ -162,11 +217,11 @@ export function useAuditData(currentUser: User | null) {
     try {
       const res = await api.submitResponse(params);
       await fetchAll();
-      addToast('✅ Corrective actions submitted successfully');
+      addToast('Corrective actions submitted successfully');
       return res.task;
     } catch (err: any) {
       setError(err.message);
-      addToast(`❌ Submission Error: ${err.message}`);
+      addToast(`Submission Error: ${err.message}`);
       throw err;
     }
   };
@@ -183,11 +238,11 @@ export function useAuditData(currentUser: User | null) {
     try {
       const res = await api.sendReminder(taskId);
       await fetchAll();
-      addToast(`🔔 Reminder #${res.reminderCount} sent to SPOC`);
+      addToast(`Reminder #${res.reminderCount} sent to department SPOC`);
       return res.reminderCount;
     } catch (err: any) {
       setError(err.message);
-      addToast(`❌ Reminder Error: ${err.message}`);
+      addToast(`Reminder Error: ${err.message}`);
       throw err;
     }
   };
@@ -196,11 +251,11 @@ export function useAuditData(currentUser: User | null) {
     try {
       const res = await api.closeTask(taskId);
       await fetchAll();
-      addToast('✅ Task closed successfully');
+      addToast('Task closed successfully');
       return res.task;
     } catch (err: any) {
       setError(err.message);
-      addToast(`❌ Error: ${err.message}`);
+      addToast(`Error: ${err.message}`);
       throw err;
     }
   };
@@ -220,10 +275,10 @@ export function useAuditData(currentUser: User | null) {
         }
         return [...prev, savedModel];
       });
-      addToast('✅ Department updated successfully');
+      addToast('Department updated successfully');
     } catch (err: any) {
       setError(err.message);
-      addToast(`❌ Error: ${err.message}`);
+      addToast(`Error: ${err.message}`);
       throw err;
     }
   };
@@ -232,10 +287,10 @@ export function useAuditData(currentUser: User | null) {
     try {
       await api.deleteDept(ref);
       setDepts((prev) => prev.filter((d) => d.ref.toLowerCase() !== ref.toLowerCase()));
-      addToast('✅ Department deleted');
+      addToast('Department deleted');
     } catch (err: any) {
       setError(err.message);
-      addToast(`❌ Error: ${err.message}`);
+      addToast(`Error: ${err.message}`);
       throw err;
     }
   };
@@ -244,11 +299,11 @@ export function useAuditData(currentUser: User | null) {
     try {
       const res = await api.importDepts(importedDepts);
       await fetchAll();
-      addToast(`✅ Imported ${res.added} department(s)`);
+      addToast(`Imported ${res.added} department(s)`);
       return res;
     } catch (err: any) {
       setError(err.message);
-      addToast(`❌ Error: ${err.message}`);
+      addToast(`Error: ${err.message}`);
       throw err;
     }
   };
@@ -257,10 +312,10 @@ export function useAuditData(currentUser: User | null) {
     try {
       await api.saveUser(user);
       await fetchAll();
-      addToast('✅ User saved successfully');
+      addToast('User saved successfully');
     } catch (err: any) {
       setError(err.message);
-      addToast(`❌ Error: ${err.message}`);
+      addToast(`Error: ${err.message}`);
       throw err;
     }
   };
@@ -269,10 +324,10 @@ export function useAuditData(currentUser: User | null) {
     try {
       await api.deleteUser(id);
       await fetchAll();
-      addToast('✅ User deleted');
+      addToast('User deleted');
     } catch (err: any) {
       setError(err.message);
-      addToast(`❌ Error: ${err.message}`);
+      addToast(`Error: ${err.message}`);
       throw err;
     }
   };
@@ -281,10 +336,10 @@ export function useAuditData(currentUser: User | null) {
     try {
       const res = await api.saveSettings(newSettings);
       await fetchAll();
-      addToast('✅ Settings saved');
+      addToast('Settings saved');
     } catch (err: any) {
       setError(err.message);
-      addToast(`❌ Error: ${err.message}`);
+      addToast(`Error: ${err.message}`);
       throw err;
     }
   };
@@ -293,10 +348,10 @@ export function useAuditData(currentUser: User | null) {
     try {
       await api.resetData();
       await fetchAll();
-      addToast('🔄 Data reset to default mock state');
+      addToast('Data reset to default state');
     } catch (err: any) {
       setError(err.message);
-      addToast(`❌ Reset Error: ${err.message}`);
+      addToast(`Reset Error: ${err.message}`);
       throw err;
     }
   };

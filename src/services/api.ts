@@ -101,8 +101,9 @@ export const api = {
   getMe: () => request<{ user: User }>('/api/auth/me'),
 
   // Departments
-  getDepts: async (): Promise<DepartmentModel[]> => {
-    const data = await request<Department[]>('/api/depts');
+  getDepts: async (params?: { auditorId?: string; userId?: string; role?: string }): Promise<DepartmentModel[]> => {
+    const query = params ? `?${new URLSearchParams(params as Record<string, string>).toString()}` : '';
+    const data = await request<Department[]>(`/api/depts${query}`);
     return DepartmentModel.fromList(data);
   },
 
@@ -124,7 +125,10 @@ export const api = {
     }),
 
   // Users
-  getUsers: () => request<User[]>('/api/users'),
+  getUsers: (params?: { auditorId?: string; userId?: string; role?: string }) => {
+    const query = params ? `?${new URLSearchParams(params as Record<string, string>).toString()}` : '';
+    return request<User[]>(`/api/users${query}`);
+  },
 
   saveUser: (user: Partial<User>) =>
     request<{ success: boolean; user: User }>('/api/users', {
@@ -138,7 +142,10 @@ export const api = {
     }),
 
   // Audits
-  getAudits: () => request<AuditReport[]>('/api/audits'),
+  getAudits: (params?: { auditorId?: string; userId?: string; role?: string }) => {
+    const query = params ? `?${new URLSearchParams(params as Record<string, string>).toString()}` : '';
+    return request<AuditReport[]>(`/api/audits${query}`);
+  },
 
   submitAudit: (audit: Partial<AuditReport>) =>
     request<{ success: boolean; audit: AuditReport }>('/api/audits', {
@@ -147,7 +154,10 @@ export const api = {
     }),
 
   // Plans
-  getPlans: () => request<PlanItem[]>('/api/plans'),
+  getPlans: (params?: { auditorId?: string; userId?: string; role?: string }) => {
+    const query = params ? `?${new URLSearchParams(params as Record<string, string>).toString()}` : '';
+    return request<PlanItem[]>(`/api/plans${query}`);
+  },
 
   savePlan: (plan: Partial<PlanItem>) =>
     request<{ success: boolean; plan: PlanItem }>('/api/plans', {
@@ -161,7 +171,10 @@ export const api = {
     }),
 
   // Tasks
-  getTasks: () => request<AuditTask[]>('/api/tasks'),
+  getTasks: (params?: { auditorId?: string; userId?: string; role?: string }) => {
+    const query = params ? `?${new URLSearchParams(params as Record<string, string>).toString()}` : '';
+    return request<AuditTask[]>(`/api/tasks${query}`);
+  },
 
   getTaskByToken: (token: string) =>
     request<AuditTask>(`/api/tasks/token/${token}`),

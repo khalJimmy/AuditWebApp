@@ -99,14 +99,14 @@ export const SpocRespondOverlay: React.FC<SpocRespondOverlayProps> = ({ token, o
             Loading audit task details...
           </div>
         ) : error ? (
-          <div className="alert ae">❌ {error}</div>
+          <div className="alert ae">{error}</div>
         ) : success ? (
           <div className="alert as" style={{ padding: '24px', fontSize: '14px' }}>
-            ✅ Thank you! Your corrective actions have been submitted successfully.
+            Thank you. Your corrective actions have been submitted successfully.
             <br />
-            The audit team will review and close this task.
+            The audit team will review the submissions and finalize task closure.
             <br />
-            <strong>Task ID: {task?.taskId}</strong>
+            <strong>Task Reference ID: {task?.taskId}</strong>
           </div>
         ) : task ? (
           <div>
@@ -116,8 +116,8 @@ export const SpocRespondOverlay: React.FC<SpocRespondOverlayProps> = ({ token, o
               return (
                 <div className={`alert ${hoursLeft < 0 ? 'ae' : hoursLeft < 12 ? 'aw' : 'ai'}`}>
                   {hoursLeft < 0
-                    ? `⚠ OVERDUE by ${Math.abs(hoursLeft)} hours — Submit immediately!`
-                    : `⏰ ${hoursLeft} hours remaining to respond`}
+                    ? `Overdue by ${Math.abs(hoursLeft)} hours — Immediate submission required.`
+                    : `${hoursLeft} hours remaining in corrective action window.`}
                 </div>
               );
             })()}
@@ -182,7 +182,7 @@ export const SpocRespondOverlay: React.FC<SpocRespondOverlayProps> = ({ token, o
 
             <div className="brow">
               <button className="btn btn-g" onClick={handleSubmit}>
-                ✅ Submit Corrective Actions
+                Submit Corrective Actions
               </button>
             </div>
           </div>

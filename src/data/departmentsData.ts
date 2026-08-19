@@ -4,6 +4,7 @@ import { DepartmentCatalog } from '../models/DepartmentCatalog.js';
 
 export const INITIAL_DEPTS: DepartmentModel[] = DepartmentModel.fromList([
   { 
+    id: 'dept_a',
     ref: 'A', 
     dept: 'ADMIN', 
     fn: 'ADMIN', 
@@ -18,6 +19,7 @@ export const INITIAL_DEPTS: DepartmentModel[] = DepartmentModel.fromList([
     }
   },
   { 
+    id: 'dept_aa',
     ref: 'AA', 
     dept: 'MIS', 
     fn: 'MIS', 
@@ -32,6 +34,7 @@ export const INITIAL_DEPTS: DepartmentModel[] = DepartmentModel.fromList([
     }
   },
   { 
+    id: 'dept_ab',
     ref: 'AB', 
     dept: 'OPERATIONS', 
     fn: 'OPERATIONS POST LAUNCH', 
@@ -46,6 +49,7 @@ export const INITIAL_DEPTS: DepartmentModel[] = DepartmentModel.fromList([
     }
   },
   { 
+    id: 'dept_e1',
     ref: 'E1', 
     dept: 'CUSTOMER DELIGHT', 
     fn: 'CUSTOMER DELIGHT - I CARE', 
@@ -60,6 +64,7 @@ export const INITIAL_DEPTS: DepartmentModel[] = DepartmentModel.fromList([
     }
   },
   { 
+    id: 'dept_e2',
     ref: 'E2', 
     dept: 'CUSTOMER DELIGHT', 
     fn: 'CUSTOMER DELIGHT - I CARE - REFUND', 
@@ -74,6 +79,7 @@ export const INITIAL_DEPTS: DepartmentModel[] = DepartmentModel.fromList([
     }
   },
   { 
+    id: 'dept_f',
     ref: 'F', 
     dept: 'ENGINEERING COMMERCIAL', 
     fn: 'ENGINEERING COMMERCIAL - DESIGN', 
@@ -88,6 +94,7 @@ export const INITIAL_DEPTS: DepartmentModel[] = DepartmentModel.fromList([
     }
   },
   { 
+    id: 'dept_f1',
     ref: 'F1', 
     dept: 'ENGINEERING COMMERCIAL', 
     fn: 'ENGINEERING COMMERCIAL - CONTRACTS', 
@@ -102,6 +109,7 @@ export const INITIAL_DEPTS: DepartmentModel[] = DepartmentModel.fromList([
     }
   },
   { 
+    id: 'dept_f2',
     ref: 'F2', 
     dept: 'ENGINEERING COMMERCIAL', 
     fn: 'ENGINEERING COMMERCIAL - BILLING', 
@@ -116,6 +124,7 @@ export const INITIAL_DEPTS: DepartmentModel[] = DepartmentModel.fromList([
     }
   },
   { 
+    id: 'dept_r1',
     ref: 'R1', 
     dept: 'HUMAN RESOURCES', 
     fn: 'HR - RECRUITMENT', 
@@ -130,6 +139,7 @@ export const INITIAL_DEPTS: DepartmentModel[] = DepartmentModel.fromList([
     }
   },
   { 
+    id: 'dept_r3',
     ref: 'R3', 
     dept: 'HUMAN RESOURCES', 
     fn: 'HR - PAYROLL', 
