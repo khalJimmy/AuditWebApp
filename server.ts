@@ -11,10 +11,9 @@ import {
   INITIAL_TASKS,
   h6
 } from './src/data/mockData.js';
-import { User, Department, AuditReport, AuditPlan, AuditTask, SystemSettings, SmtpServerConfig, EmailAttachment } from './src/types.js';
+import { User, Department, AuditReport, AuditPlan, AuditTask, SystemSettings, EmailAttachment } from './src/types.js';
 import { renderAuditScheduledEmail, renderCapaClockTickingEmail } from './src/utils/emailTemplates.js';
 import { initPostgresSchema } from './src/db/index.js';
-import nodemailer from 'nodemailer';
 
 // In-memory Database state initialized with mock DB data
 let users: User[] = [...INITIAL_USERS];
@@ -683,7 +682,7 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
   });
 
   // ====================================================
-  // EMAIL DELIVERY ENGINE (RESEND HTTPS API + SMTP RELAY)
+  // EMAIL DELIVERY ENGINE (RESEND HTTPS REST API)
   // ====================================================
   function syncEnvironmentSettings() {
     const envResendKey = (process.env.RESEND_API_KEY || '').trim();
@@ -698,34 +697,8 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
       settings.resendApiKey = envResendKey;
       settings.resendConfiguredFromEnv = true;
       settings.resendFromEnv = envResendFrom || 'onboarding@resend.dev';
-
-      if (!settings.smtpServers) settings.smtpServers = [];
-
-      let resendServer = settings.smtpServers.find(s => s.provider === 'resend' || s.id === 'cfg_resend_default' || s.id === 'cfg_resend_env');
-      if (!resendServer) {
-        resendServer = {
-          id: 'cfg_resend_env',
-          name: 'Resend HTTPS API (Vercel Cloud)',
-          provider: 'resend',
-          apiKey: envResendKey,
-          fromName: 'Casagrand Quality & Process Audit',
-          fromEmail: envResendFrom || 'onboarding@resend.dev',
-          isDefault: true,
-          isEnvConfigured: true,
-          status: 'verified'
-        };
-        settings.smtpServers.unshift(resendServer);
-        settings.activeSmtpServerId = resendServer.id;
-      } else {
-        resendServer.apiKey = envResendKey;
-        resendServer.isEnvConfigured = true;
-        resendServer.status = 'verified';
-        if (envResendFrom) resendServer.fromEmail = envResendFrom;
-        if (!settings.activeSmtpServerId || settings.activeSmtpServerId === 'cfg_gmail_backup') {
-          settings.smtpServers.forEach(s => { s.isDefault = (s.id === resendServer!.id); });
-          resendServer.isDefault = true;
-          settings.activeSmtpServerId = resendServer.id;
-        }
+      if (!settings.senderEmail || settings.senderEmail === 'audit.pnc@casagrand.co.in') {
+        settings.senderEmail = envResendFrom || 'onboarding@resend.dev';
       }
     } else {
       settings.resendConfiguredFromEnv = false;
@@ -735,40 +708,8 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
   // Initial sync on startup
   syncEnvironmentSettings();
 
-  function getSmtpConfig(customServerId?: string): SmtpServerConfig | null {
-    syncEnvironmentSettings();
-    let cfg: SmtpServerConfig | null = null;
-    if (customServerId && settings.smtpServers) {
-      cfg = settings.smtpServers.find(s => s.id === customServerId) || null;
-    }
-    if (!cfg && settings.activeSmtpServerId && settings.smtpServers) {
-      cfg = settings.smtpServers.find(s => s.id === settings.activeSmtpServerId) || null;
-    }
-    if (!cfg && settings.smtpServers && settings.smtpServers.length > 0) {
-      cfg = settings.smtpServers.find(s => s.isDefault) || settings.smtpServers[0];
-    }
-    if (!cfg) {
-      const resendKey = process.env.RESEND_API_KEY || settings.resendApiKey;
-      if (resendKey) {
-        cfg = {
-          id: 'cfg_resend_env',
-          name: 'Resend HTTPS API (Vercel Cloud)',
-          provider: 'resend',
-          apiKey: resendKey,
-          fromName: 'Casagrand Quality & Process Audit',
-          fromEmail: process.env.RESEND_FROM || 'onboarding@resend.dev',
-          isDefault: true,
-          isEnvConfigured: true,
-          status: 'verified'
-        };
-      }
-    }
-    return cfg;
-  }
-
   async function sendViaResendApi(
     apiKey: string,
-    cfg: SmtpServerConfig,
     params: {
       to: string | string[];
       cc?: string | string[];
@@ -776,12 +717,14 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
       subject: string;
       html: string;
       text?: string;
+      fromName?: string;
+      fromEmail?: string;
       attachments?: EmailAttachment[];
     }
   ): Promise<{ success: boolean; messageId: string; serverName: string }> {
     const cleanKey = (apiKey || '').trim().replace(/^['"]|['"]$/g, '');
     if (!cleanKey) {
-      throw new Error('Resend API key is missing. Please save a valid API key (starts with "re_") in Settings.');
+      throw new Error('Resend API key is missing. Please set RESEND_API_KEY in Vercel environment or save it in Settings.');
     }
 
     const toList = Array.isArray(params.to)
@@ -796,8 +739,8 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
       ? (Array.isArray(params.bcc) ? params.bcc : params.bcc.split(',').map(s => s.trim()).filter(Boolean))
       : undefined;
 
-    const fromEmail = (cfg.fromEmail || process.env.RESEND_FROM || 'onboarding@resend.dev').trim();
-    const fromName = (cfg.fromName || 'Casagrand Quality Audit').trim();
+    const fromEmail = (params.fromEmail || settings.senderEmail || process.env.RESEND_FROM || 'onboarding@resend.dev').trim();
+    const fromName = (params.fromName || settings.senderName || 'Casagrand Quality Audit').trim();
     const fromHeader = `"${fromName}" <${fromEmail}>`;
 
     const attachments = params.attachments?.map(att => ({
@@ -837,156 +780,55 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
     return {
       success: true,
       messageId: resData.id || `resend_${Date.now()}`,
-      serverName: cfg.name || 'Resend HTTPS API'
+      serverName: 'Resend HTTPS API (Vercel Cloud)'
     };
-  }
-
-  function createTransporter(cfg: SmtpServerConfig, forcePort?: number, useServiceShortcut = false) {
-    const cleanPass = (cfg.pass || '').replace(/[\s\u00A0\u200B-\u200D\uFEFF'"]/g, '').trim();
-    const cleanUser = (cfg.user || '').trim();
-    const isGmail = cfg.provider === 'gmail' || (cfg.host && cfg.host.toLowerCase().includes('gmail.com'));
-
-    if (isGmail && useServiceShortcut) {
-      return nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: cleanUser,
-          pass: cleanPass
-        },
-        tls: {
-          rejectUnauthorized: false
-        }
-      });
-    }
-
-    const port = forcePort || Number(cfg.port) || (isGmail ? (cfg.secure ? 465 : 587) : 587);
-    const isSecure = cfg.secure ?? (port === 465);
-
-    const transportOptions: any = {
-      host: isGmail ? 'smtp.gmail.com' : (cfg.host?.trim() || 'smtp.gmail.com'),
-      port: port,
-      secure: isSecure,
-      auth: {
-        user: cleanUser,
-        pass: cleanPass
-      },
-      family: 4, // Explicit IPv4 to prevent IPv6 hanging/timeouts in cloud container environments
-      connectionTimeout: 10000,
-      greetingTimeout: 8000,
-      socketTimeout: 12000,
-      tls: {
-        rejectUnauthorized: false,
-        minVersion: 'TLSv1.2'
-      }
-    };
-
-    if (isGmail && port === 587) {
-      transportOptions.requireTLS = true;
-    }
-
-    return nodemailer.createTransport(transportOptions);
   }
 
   async function sendOutboundMail(params: {
-    smtpConfig?: SmtpServerConfig | null;
-    serverId?: string;
     to: string;
     cc?: string;
     bcc?: string;
     subject: string;
     html: string;
     text?: string;
+    fromEmail?: string;
+    fromName?: string;
     attachments?: EmailAttachment[];
   }): Promise<{ success: boolean; messageId?: string; simulated?: boolean; serverName?: string; error?: string }> {
-    const cfg = params.smtpConfig || getSmtpConfig(params.serverId);
+    syncEnvironmentSettings();
+    const apiKey = (settings.resendApiKey || process.env.RESEND_API_KEY || '').trim();
 
-    // 1. Resend API Mode (HTTPS, No SMTP Port Restrictions)
-    if (cfg?.provider === 'resend' || (cfg?.apiKey && !cfg?.host)) {
-      const apiKey = (cfg?.apiKey || settings.resendApiKey || process.env.RESEND_API_KEY || '').trim();
-      if (!apiKey) {
-        console.log(`[RESEND SIMULATED] No Resend API key configured for "${cfg?.name || 'Resend'}". Simulated email sent to ${params.to}`);
-        return {
-          success: true,
-          simulated: true,
-          serverName: cfg?.name || 'Resend API (Simulated)',
-          messageId: `sim_resend_${Date.now()}`
-        };
-      }
-
-      try {
-        const resendResult = await sendViaResendApi(apiKey, cfg, {
-          to: params.to,
-          cc: params.cc,
-          bcc: params.bcc,
-          subject: params.subject,
-          html: params.html,
-          text: params.text,
-          attachments: params.attachments
-        });
-        console.log(`[RESEND OUTBOUND SUCCESS] Email delivered to ${params.to} (ID: ${resendResult.messageId}) via ${resendResult.serverName}`);
-        return {
-          success: true,
-          simulated: false,
-          serverName: resendResult.serverName,
-          messageId: resendResult.messageId
-        };
-      } catch (err: any) {
-        console.error(`[RESEND OUTBOUND ERROR] Failed sending to ${params.to}:`, err.message);
-        throw err;
-      }
-    }
-
-    // 2. SMTP Relay Mode (Nodemailer fallback)
-    const cleanPass = (cfg?.pass || '').replace(/\s+/g, '');
-    const formattedAttachments = params.attachments?.map(att => {
-      if (att.encoding === 'base64') {
-        return {
-          filename: att.filename,
-          content: Buffer.from(att.content, 'base64'),
-          contentType: att.contentType
-        };
-      }
-      return {
-        filename: att.filename,
-        content: att.content,
-        contentType: att.contentType
-      };
-    });
-
-    if (!cfg || !cfg.user || !cleanPass) {
-      console.log(`[SMTP SIMULATED] No password/key configured for server "${cfg?.name || 'Default'}". Simulated email sent to ${params.to}`);
+    if (!apiKey) {
+      console.log(`[RESEND SIMULATED] No Resend API key configured. Simulated email sent to ${params.to}`);
       return {
         success: true,
         simulated: true,
-        serverName: cfg?.name || 'Simulated Local Relay',
-        messageId: `sim_${Date.now()}`
+        serverName: 'Resend API (Simulated)',
+        messageId: `sim_resend_${Date.now()}`
       };
     }
 
     try {
-      const transporter = createTransporter(cfg);
-      const fromAddr = `"${cfg.fromName || 'Casagrand Quality Audit'}" <${cfg.fromEmail || cfg.user}>`;
-
-      const info = await transporter.sendMail({
-        from: fromAddr,
+      const resendResult = await sendViaResendApi(apiKey, {
         to: params.to,
-        cc: params.cc || undefined,
-        bcc: params.bcc || undefined,
+        cc: params.cc,
+        bcc: params.bcc,
         subject: params.subject,
         html: params.html,
         text: params.text,
-        attachments: formattedAttachments
+        fromEmail: params.fromEmail,
+        fromName: params.fromName,
+        attachments: params.attachments
       });
-
-      console.log(`[SMTP OUTBOUND SUCCESS] Email sent to ${params.to} (ID: ${info.messageId}) via ${cfg.name}`);
+      console.log(`[RESEND OUTBOUND SUCCESS] Email delivered to ${params.to} (ID: ${resendResult.messageId})`);
       return {
         success: true,
         simulated: false,
-        serverName: cfg.name,
-        messageId: info.messageId
+        serverName: resendResult.serverName,
+        messageId: resendResult.messageId
       };
     } catch (err: any) {
-      console.error(`[SMTP OUTBOUND ERROR] Failed sending to ${params.to} via ${cfg.name}:`, err.message);
+      console.error(`[RESEND OUTBOUND ERROR] Failed sending to ${params.to}:`, err.message);
       throw err;
     }
   }
@@ -1083,7 +925,6 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 
       try {
         mailResult = await sendOutboundMail({
-          serverId: smtpServerId,
           to: newTask.spocMail || 'spoc@casagrand.co.in',
           cc: newTask.hodMail,
           subject: `[CAPA Required - 72h SLA] Process Audit Findings: ${audit.auditId} - ${audit.dept}`,
@@ -1095,7 +936,7 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
         mailResult = {
           success: false,
           simulated: false,
-          serverName: 'SMTP Error: ' + mailErr.message
+          serverName: 'Resend Delivery Error: ' + mailErr.message
         };
       }
 
@@ -1242,156 +1083,46 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
     }
   });
 
-  // TEST SMTP CONNECTION & SEND VERIFICATION EMAIL
-  // TEST EMAIL / SMTP SERVER CONNECTION & DELIVER VERIFICATION
-  app.post('/api/email/test-smtp', async (req: Request, res: Response, next: NextFunction) => {
+  // TEST RESEND CONNECTION & DELIVER VERIFICATION EMAIL
+  app.post(['/api/email/test', '/api/email/test-smtp'], async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { smtpConfig, testRecipient } = req.body;
-      if (!smtpConfig) {
-        res.status(400).json({ error: 'Email configuration is required' });
+      syncEnvironmentSettings();
+      const { apiKey, senderEmail, senderName, testRecipient, config } = req.body;
+      const targetKey = (apiKey || config?.apiKey || settings.resendApiKey || process.env.RESEND_API_KEY || '').trim();
+      const targetFrom = (senderEmail || config?.fromEmail || settings.senderEmail || process.env.RESEND_FROM || 'onboarding@resend.dev').trim();
+      const targetName = (senderName || config?.fromName || settings.senderName || 'Casagrand Quality Audit').trim();
+      const recipient = (testRecipient || targetFrom || 'delivered@resend.dev').trim();
+
+      if (!targetKey) {
+        res.status(400).json({
+          error: 'Resend API Key is required. Please set RESEND_API_KEY in Vercel or enter it in Settings.'
+        });
         return;
-      }
-
-      const recipient = testRecipient || smtpConfig.fromEmail || smtpConfig.user || 'delivered@resend.dev';
-
-      // 1. Resend API Mode Testing
-      if (smtpConfig.provider === 'resend' || (smtpConfig.apiKey && !smtpConfig.host)) {
-        const apiKey = (smtpConfig.apiKey || settings.resendApiKey || process.env.RESEND_API_KEY || '').trim();
-        if (!apiKey) {
-          res.status(400).json({
-            error: 'Resend API Key is required. Please paste your Resend API Key (starts with "re_") in the configuration field.'
-          });
-          return;
-        }
-
-        const testHtml = `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #ffffff;">
-            <div style="background: #e11d48; padding: 20px 24px; color: #ffffff;">
-              <h2 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">CASAGRAND PROCESS QUALITY AUDIT</h2>
-              <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Resend HTTPS Email API Integration Verification</p>
-            </div>
-            <div style="padding: 24px; color: #1e293b; font-size: 14px; line-height: 1.6;">
-              <p style="margin-top: 0; font-weight: 700; color: #059669; font-size: 16px;">
-                🚀 Resend API Connection Verified Successfully!
-              </p>
-              <p>This verification confirms that your Resend API integration is authenticated and ready to deliver audit notices, CAPA alerts, and reports via HTTPS without SMTP port restrictions.</p>
-              <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0;">
-                <tr style="border-bottom: 1px solid #e2e8f0;">
-                  <td style="padding: 10px 14px; color: #64748b; font-weight: 600; width: 140px;">Channel:</td>
-                  <td style="padding: 10px 14px; color: #0f172a; font-weight: 600;">Resend HTTPS API (Port 443)</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #e2e8f0;">
-                  <td style="padding: 10px 14px; color: #64748b; font-weight: 600;">Sender Address:</td>
-                  <td style="padding: 10px 14px; color: #0f172a;">${smtpConfig.fromEmail || 'onboarding@resend.dev'}</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #e2e8f0;">
-                  <td style="padding: 10px 14px; color: #64748b; font-weight: 600;">Recipient:</td>
-                  <td style="padding: 10px 14px; color: #0f172a;">${recipient}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 10px 14px; color: #64748b; font-weight: 600;">Verified At:</td>
-                  <td style="padding: 10px 14px; color: #0f172a;">${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST</td>
-                </tr>
-              </table>
-              <p style="font-size: 12px; color: #64748b; margin-bottom: 0;">
-                All audit dispatches and CAPA notifications will now route reliably through Resend HTTPS API.
-              </p>
-            </div>
-          </div>
-        `;
-
-        try {
-          const resendResult = await sendViaResendApi(apiKey, smtpConfig, {
-            to: recipient,
-            subject: '🚀 Casagrand Process Audit: Resend API Connection Verified',
-            html: testHtml
-          });
-
-          res.json({
-            success: true,
-            message: `Resend API verified! Test email delivered to ${recipient} (ID: ${resendResult.messageId})`,
-            messageId: resendResult.messageId,
-            verifiedAt: new Date().toISOString()
-          });
-          return;
-        } catch (resendErr: any) {
-          console.error('[RESEND TEST ERROR]:', resendErr);
-          let errorMsg = resendErr.message || 'Resend API test failed';
-          if (errorMsg.includes('401') || errorMsg.includes('API key')) {
-            errorMsg = 'Resend Authentication Failed: Invalid or revoked API Key. Please verify your Resend API Key at https://resend.com/api-keys';
-          } else if (errorMsg.includes('domain') || errorMsg.includes('not verified') || errorMsg.includes('validation_error')) {
-            errorMsg = `Resend Domain Restriction: ${errorMsg}. Note: In Resend free sandbox, sender "from" must be "onboarding@resend.dev" or your verified domain.`;
-          }
-          res.status(400).json({ error: errorMsg });
-          return;
-        }
-      }
-
-      // 2. SMTP Mode Testing (Legacy / Fallback)
-      if (!smtpConfig.user || !smtpConfig.pass) {
-        res.status(400).json({ error: 'SMTP username/email and App Password are required' });
-        return;
-      }
-
-      let transporter = createTransporter(smtpConfig);
-      let verifyErr: any = null;
-      const isGmail = smtpConfig.provider === 'gmail' || (smtpConfig.host && smtpConfig.host.toLowerCase().includes('gmail.com'));
-
-      // Attempt 1: primary configuration
-      try {
-        await transporter.verify();
-      } catch (err: any) {
-        verifyErr = err;
-        // Attempt 2: Try alternate port (465 vs 587)
-        if (isGmail && (err.code === 'ETIMEDOUT' || err.code === 'ECONNREFUSED' || err.code === 'ESOCKET' || err.code === 'ENETUNREACH')) {
-          const altPort = Number(smtpConfig.port) === 465 ? 587 : 465;
-          console.warn(`[SMTP RETRY] Port ${smtpConfig.port} failed (${err.code}). Trying fallback port ${altPort}...`);
-          try {
-            transporter = createTransporter(smtpConfig, altPort);
-            await transporter.verify();
-            verifyErr = null;
-          } catch (retryErr: any) {
-            verifyErr = retryErr;
-            // Attempt 3: Try nodemailer 'gmail' built-in service definition
-            try {
-              console.warn(`[SMTP RETRY] Trying nodemailer service: 'gmail' shortcut...`);
-              transporter = createTransporter(smtpConfig, undefined, true);
-              await transporter.verify();
-              verifyErr = null;
-            } catch (svcErr: any) {
-              verifyErr = svcErr;
-            }
-          }
-        }
-      }
-
-      if (verifyErr) {
-        throw verifyErr;
       }
 
       const testHtml = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
-          <div style="background: #e11d48; padding: 18px 24px; color: #ffffff;">
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #ffffff;">
+          <div style="background: #e11d48; padding: 20px 24px; color: #ffffff;">
             <h2 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">CASAGRAND PROCESS QUALITY AUDIT</h2>
-            <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">SMTP Server Integration Verification</p>
+            <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Resend HTTPS Email API Integration Verification</p>
           </div>
-          <div style="padding: 24px; background: #ffffff; color: #1e293b; font-size: 14px; line-height: 1.6;">
-            <p style="margin-top: 0; font-weight: 600; color: #059669; font-size: 16px;">
-              ✅ SMTP Server Connected Successfully!
+          <div style="padding: 24px; color: #1e293b; font-size: 14px; line-height: 1.6;">
+            <p style="margin-top: 0; font-weight: 700; color: #059669; font-size: 16px;">
+              🚀 Resend API Connection Verified Successfully!
             </p>
-            <p>This verification email confirms that your outgoing mail server configuration is active and ready to deliver audit alerts, SLA notifications, and reports from the Casagrand Process Audit platform.</p>
+            <p>This verification confirms that your Resend API integration is authenticated and ready to deliver audit notices, CAPA alerts, and reports via HTTPS without SMTP port restrictions.</p>
             <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0;">
               <tr style="border-bottom: 1px solid #e2e8f0;">
-                <td style="padding: 10px 14px; color: #64748b; font-weight: 600; width: 140px;">Server Label:</td>
-                <td style="padding: 10px 14px; color: #0f172a; font-weight: 600;">${smtpConfig.name || 'SMTP Server'}</td>
+                <td style="padding: 10px 14px; color: #64748b; font-weight: 600; width: 140px;">Channel:</td>
+                <td style="padding: 10px 14px; color: #0f172a; font-weight: 600;">Resend HTTPS API (Port 443)</td>
               </tr>
               <tr style="border-bottom: 1px solid #e2e8f0;">
-                <td style="padding: 10px 14px; color: #64748b; font-weight: 600;">Provider / Host:</td>
-                <td style="padding: 10px 14px; color: #0f172a;">${smtpConfig.host || 'smtp.gmail.com'} (Port ${smtpConfig.port || 587})</td>
+                <td style="padding: 10px 14px; color: #64748b; font-weight: 600;">Sender Address:</td>
+                <td style="padding: 10px 14px; color: #0f172a;">${targetFrom}</td>
               </tr>
               <tr style="border-bottom: 1px solid #e2e8f0;">
-                <td style="padding: 10px 14px; color: #64748b; font-weight: 600;">Sender Account:</td>
-                <td style="padding: 10px 14px; color: #0f172a;">${smtpConfig.user}</td>
+                <td style="padding: 10px 14px; color: #64748b; font-weight: 600;">Recipient:</td>
+                <td style="padding: 10px 14px; color: #0f172a;">${recipient}</td>
               </tr>
               <tr>
                 <td style="padding: 10px 14px; color: #64748b; font-weight: 600;">Verified At:</td>
@@ -1399,58 +1130,61 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
               </tr>
             </table>
             <p style="font-size: 12px; color: #64748b; margin-bottom: 0;">
-              Audit dispatch notices, CAPA alerts, and reminders will now be sent automatically through this relay.
+              All audit dispatches and CAPA notifications will now route reliably through Resend HTTPS API.
             </p>
           </div>
         </div>
       `;
 
-      const info = await transporter.sendMail({
-        from: `"${smtpConfig.fromName || 'Casagrand Quality Audit'}" <${smtpConfig.fromEmail || smtpConfig.user}>`,
-        to: recipient,
-        subject: '✅ Casagrand Process Audit: SMTP Connection Verified',
-        html: testHtml
-      });
+      try {
+        const resendResult = await sendViaResendApi(targetKey, {
+          to: recipient,
+          subject: '🚀 Casagrand Process Audit: Resend API Connection Verified',
+          html: testHtml,
+          fromEmail: targetFrom,
+          fromName: targetName
+        });
 
-      res.json({
-        success: true,
-        message: `SMTP connection verified and test email delivered to ${recipient}`,
-        messageId: info.messageId,
-        verifiedAt: new Date().toISOString()
-      });
-    } catch (err: any) {
-      console.error('[SMTP VERIFY ERROR]:', err);
-      let message = err.message || 'SMTP connection failed';
-      const rawMsg = (err.message || '') + ' ' + (err.response || '');
-
-      if (rawMsg.includes('Username and Password not accepted') || rawMsg.includes('BadCredentials') || rawMsg.includes('535-5.7.8') || rawMsg.includes('535 5.7.8') || err.code === 'EAUTH') {
-        message = 'Gmail Authentication Failed (535-5.7.8): Google rejected the App Password. Checklist: 1) Ensure "2-Step Verification" is ON at https://myaccount.google.com/security. 2) Generate a dedicated 16-character key at https://myaccount.google.com/apppasswords. 3) Ensure your sender email matches the Google account.';
-      } else if (err.code === 'ETIMEDOUT' || err.code === 'ECONNREFUSED' || err.code === 'ESOCKET' || err.code === 'ENETUNREACH') {
-        message = `Network Connection Timeout (${err.code || 'ETIMEDOUT'}): Outbound TCP socket to ${req.body?.smtpConfig?.host || 'smtp.gmail.com'}:${req.body?.smtpConfig?.port || 587} timed out. Tip: Switch to Resend API preset to bypass SMTP port restrictions completely.`;
-      } else if (err.code === 'EAI_AGAIN' || err.code === 'ENOTFOUND') {
-        message = `DNS Resolution Failure (${err.code}): Could not resolve mail host "${req.body?.smtpConfig?.host}". Check host spelling.`;
+        res.json({
+          success: true,
+          message: `Resend API verified! Test email delivered to ${recipient} (ID: ${resendResult.messageId})`,
+          messageId: resendResult.messageId,
+          verifiedAt: new Date().toISOString()
+        });
+      } catch (resendErr: any) {
+        console.error('[RESEND TEST ERROR]:', resendErr);
+        let errorMsg = resendErr.message || 'Resend API test failed';
+        if (errorMsg.includes('401') || errorMsg.includes('API key')) {
+          errorMsg = 'Resend Authentication Failed: Invalid or revoked API Key. Please verify your Resend API Key at https://resend.com/api-keys';
+        } else if (errorMsg.includes('domain') || errorMsg.includes('not verified') || errorMsg.includes('validation_error')) {
+          errorMsg = `Resend Domain Restriction: ${errorMsg}. Note: In Resend free sandbox, sender "from" must be "onboarding@resend.dev" or your verified domain.`;
+        }
+        res.status(400).json({ error: errorMsg });
       }
-      res.status(400).json({ error: message, code: err.code, details: err.message });
+    } catch (err: any) {
+      console.error('[RESEND TEST ERROR]:', err);
+      res.status(400).json({ error: err.message || 'Resend API verification failed' });
     }
   });
 
   // SEND CUSTOM OUTBOUND EMAIL (WITH OPTIONAL ATTACHMENTS)
   app.post('/api/email/send', async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { serverId, to, cc, bcc, subject, html, text, attachments } = req.body;
+      const { to, cc, bcc, subject, html, text, attachments, fromEmail, fromName } = req.body;
       if (!to || !subject) {
         res.status(400).json({ error: 'Recipient "to" and "subject" are required' });
         return;
       }
 
       const result = await sendOutboundMail({
-        serverId,
         to,
         cc,
         bcc,
         subject,
         html,
         text,
+        fromEmail,
+        fromName,
         attachments
       });
 
@@ -1461,22 +1195,21 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
     }
   });
 
-  // FIREBASE / SMTP EMAIL DISPATCH & TEST ENDPOINT
+  // RESEND EMAIL DISPATCH & TEST NOTIFICATION ENDPOINT
   app.post('/api/email/send-test', async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { templateType, recipientEmail, hodEmail, data, html, serverId, attachments } = req.body;
+      const { templateType, recipientEmail, hodEmail, html, attachments } = req.body;
       const docId = `mail_trigger_${Date.now()}`;
       
       let mailResult: { success: boolean; simulated?: boolean; serverName?: string; messageId?: string } = {
         success: true,
         simulated: true,
-        serverName: 'Local Simulated Queue',
+        serverName: 'Resend API (Simulated)',
         messageId: docId
       };
 
       try {
         mailResult = await sendOutboundMail({
-          serverId,
           to: recipientEmail || 'sfjimelliot@gmail.com',
           cc: hodEmail,
           subject: `[CASAGRAND NOTIFICATION] ${templateType === 'schedule' ? 'Audit Schedule Announcement' : '🚨 [CAPA Required - 72h SLA] Process Audit Findings'}`,
@@ -1518,11 +1251,9 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
     try {
       syncEnvironmentSettings();
       const envKey = (process.env.RESEND_API_KEY || '').trim();
-      const activeCfg = getSmtpConfig();
-      const effectiveKey = (activeCfg?.apiKey || settings.resendApiKey || envKey || '').trim();
-      const isResend = activeCfg?.provider === 'resend' || Boolean(effectiveKey && !activeCfg?.host);
+      const effectiveKey = (settings.resendApiKey || envKey || '').trim();
 
-      if (isResend && effectiveKey) {
+      if (effectiveKey) {
         const masked = effectiveKey.length > 8
           ? `${effectiveKey.substring(0, 5)}••••••••${effectiveKey.substring(effectiveKey.length - 4)}`
           : 're_••••••••';
@@ -1533,33 +1264,15 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
           hasEnvKey: Boolean(envKey),
           envSource: envKey ? 'Vercel / Cloud Environment (RESEND_API_KEY)' : 'Stored Settings',
           apiKeyMasked: masked,
-          fromEmail: activeCfg?.fromEmail || process.env.RESEND_FROM || 'onboarding@resend.dev',
-          fromName: activeCfg?.fromName || 'Casagrand Quality & Process Audit',
+          fromEmail: settings.senderEmail || process.env.RESEND_FROM || 'onboarding@resend.dev',
+          fromName: settings.senderName || 'Casagrand Quality & Process Audit',
           status: 'connected',
-          activeServerId: activeCfg?.id || 'cfg_resend_env',
-          activeServerName: activeCfg?.name || 'Resend HTTPS API',
+          activeServerId: 'resend',
+          activeServerName: 'Resend HTTPS API (Vercel Cloud)',
           lastChecked: new Date().toISOString(),
           message: envKey
             ? 'Connected to Resend API via Vercel Environment Variables.'
             : 'Connected to Resend API via stored API Key configuration.'
-        });
-        return;
-      }
-
-      if (activeCfg && activeCfg.provider !== 'resend') {
-        res.json({
-          connected: Boolean(activeCfg.pass && activeCfg.user),
-          provider: activeCfg.provider,
-          hasEnvKey: false,
-          envSource: 'SMTP Relay',
-          apiKeyMasked: undefined,
-          fromEmail: activeCfg.fromEmail || activeCfg.user || '',
-          fromName: activeCfg.fromName || 'Casagrand Quality Audit',
-          status: activeCfg.pass ? 'connected' : 'unconfigured',
-          activeServerId: activeCfg.id,
-          activeServerName: activeCfg.name,
-          lastChecked: new Date().toISOString(),
-          message: `Using ${activeCfg.name} (${activeCfg.host}:${activeCfg.port})`
         });
         return;
       }
@@ -1569,8 +1282,8 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
         provider: 'resend',
         hasEnvKey: false,
         envSource: 'None detected',
-        fromEmail: 'onboarding@resend.dev',
-        fromName: 'Casagrand Quality & Process Audit',
+        fromEmail: settings.senderEmail || 'onboarding@resend.dev',
+        fromName: settings.senderName || 'Casagrand Quality & Process Audit',
         status: 'unconfigured',
         lastChecked: new Date().toISOString(),
         message: 'No Resend API Key detected. Set RESEND_API_KEY in Vercel Environment Variables or enter it in Settings.'
@@ -1588,9 +1301,8 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
   app.post('/api/email/check-connection', async (req: Request, res: Response) => {
     try {
       syncEnvironmentSettings();
-      const { apiKey, serverId } = req.body || {};
-      const activeCfg = getSmtpConfig(serverId);
-      const targetKey = (apiKey || activeCfg?.apiKey || settings.resendApiKey || process.env.RESEND_API_KEY || '').trim();
+      const { apiKey } = req.body || {};
+      const targetKey = (apiKey || settings.resendApiKey || process.env.RESEND_API_KEY || '').trim();
 
       if (!targetKey) {
         res.status(400).json({
@@ -1624,12 +1336,12 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
           hasEnvKey: Boolean(process.env.RESEND_API_KEY),
           envSource: process.env.RESEND_API_KEY ? 'Vercel / Cloud Environment (RESEND_API_KEY)' : 'Application Settings',
           apiKeyMasked: masked,
-          fromEmail: activeCfg?.fromEmail || process.env.RESEND_FROM || 'onboarding@resend.dev',
-          fromName: activeCfg?.fromName || 'Casagrand Quality & Process Audit',
+          fromEmail: settings.senderEmail || process.env.RESEND_FROM || 'onboarding@resend.dev',
+          fromName: settings.senderName || 'Casagrand Quality & Process Audit',
           status: 'connected',
           latencyMs,
-          activeServerId: activeCfg?.id,
-          activeServerName: activeCfg?.name,
+          activeServerId: 'resend',
+          activeServerName: 'Resend HTTPS API (Vercel Cloud)',
           lastChecked: new Date().toISOString(),
           message: `Resend API verified successfully (${latencyMs}ms latency). Authentication active.`
         });

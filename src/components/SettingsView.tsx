@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Settings, User } from '../types';
 import { SparkUsageMetrics } from './SparkUsageMetrics';
 import { EmailTemplatesPreview } from './EmailTemplatesPreview';
-import { SmtpSettingsCard } from './SmtpSettingsCard';
+import { ResendSettingsCard } from './ResendSettingsCard';
 import {
   Save,
   Sliders,
@@ -29,25 +29,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onToast
 }) => {
   const [form, setForm] = useState<Settings>({ ...settings });
-  const [selectedSmtpId, setSelectedSmtpId] = useState<string>(
-    settings.activeSmtpServerId || (settings.smtpServers && settings.smtpServers[0]?.id) || 'smtp_gmail_default'
-  );
 
   useEffect(() => {
     setForm({ ...settings });
-    if (settings.activeSmtpServerId) {
-      setSelectedSmtpId(settings.activeSmtpServerId);
-    }
   }, [settings]);
 
   const handleSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     try {
-      const payload: Settings = {
-        ...form,
-        activeSmtpServerId: selectedSmtpId
-      };
-      await onSaveSettings(payload);
+      await onSaveSettings(form);
       onToast('Settings saved successfully');
     } catch (err: any) {
       onToast(`Error saving settings: ${err.message}`);
@@ -72,7 +62,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div className="pt">
             System <em>Settings</em>
           </div>
-          <div className="ps">SLA TAT · Outgoing SMTP Mail Servers · Planner &amp; SLA Reminder Templates · Metrics</div>
+          <div className="ps">SLA TAT · Resend Email API · Planner &amp; SLA Reminder Templates · Metrics</div>
         </div>
         <button type="button" className="btn btn-g" onClick={() => handleSave()} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
           <Save size={13} />
@@ -80,14 +70,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </button>
       </div>
 
-      {/* 1. OUTGOING SMTP RELAY SERVERS CARD (SAVE & LIST) */}
-      <SmtpSettingsCard
+      {/* 1. RESEND HTTPS EMAIL DELIVERY ENGINE CARD */}
+      <ResendSettingsCard
         settings={settings}
         onUpdateSettings={onSaveSettings}
         onToast={onToast}
         currentUserEmail={currentUser.email}
-        selectedServerId={selectedSmtpId}
-        onSelectServerId={setSelectedSmtpId}
       />
 
       {/* 2. SLA & AUDIT PARAMETERS */}
@@ -165,7 +153,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           onToast={onToast}
           systemEmail={form.systemEmail}
           tatHours={form.tatHours}
-          selectedServerId={selectedSmtpId}
         />
 
         {/* 4. MASTER AUDIT CHECKLIST COUNT */}

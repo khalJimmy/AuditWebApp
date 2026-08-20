@@ -184,32 +184,11 @@ export interface ZoneAuditors {
   Bangalore: string[];
 }
 
-export type EmailProviderType = 'resend' | 'gmail' | 'office365' | 'custom';
-
-export interface SmtpServerConfig {
-  id: string;
-  name: string;
-  provider: EmailProviderType;
-  apiKey?: string; // For Resend API Key (re_...)
-  host?: string;
-  port?: number;
-  secure?: boolean;
-  user?: string;
-  pass?: string;
-  fromName: string;
-  fromEmail: string;
-  isDefault?: boolean;
-  isEnvConfigured?: boolean;
-  lastTestedAt?: string;
-  status?: 'verified' | 'failed' | 'untested';
-  testMessageId?: string;
-}
-
-export type EmailServerConfig = SmtpServerConfig;
+export type EmailProviderType = 'resend';
 
 export interface EmailConnectionStatus {
   connected: boolean;
-  provider: EmailProviderType;
+  provider: 'resend';
   hasEnvKey: boolean;
   envSource: string;
   apiKeyMasked?: string;
@@ -219,8 +198,6 @@ export interface EmailConnectionStatus {
   lastChecked?: string;
   latencyMs?: number;
   message?: string;
-  activeServerId?: string;
-  activeServerName?: string;
 }
 
 export interface EmailAttachment {
@@ -234,16 +211,18 @@ export interface Settings {
   tatHours: number;
   defaultYear: string;
   systemEmail: string;
-  dispatchTemplate: string;
-  reminderTemplate: string;
-  auditors?: ZoneAuditors;
-  params?: { id: string; title: string; max: number }[];
   senderEmail?: string;
+  senderName?: string;
   resendApiKey?: string;
   resendConfiguredFromEnv?: boolean;
   resendFromEnv?: string;
-  smtpServers?: SmtpServerConfig[];
-  activeSmtpServerId?: string;
+  dispatchTemplate: string;
+  reminderTemplate: string;
+  defaultCcRecipients?: string;
+  autoReminder24h?: boolean;
+  autoEscalateHod?: boolean;
+  auditors?: ZoneAuditors;
+  params?: { id: string; title: string; max: number }[];
 }
 
 export type SystemSettings = Settings;

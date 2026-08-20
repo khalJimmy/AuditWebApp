@@ -18,14 +18,12 @@ interface EmailTemplatesPreviewProps {
   onToast: (msg: string) => void;
   systemEmail: string;
   tatHours: number;
-  selectedServerId?: string;
 }
 
 export const EmailTemplatesPreview: React.FC<EmailTemplatesPreviewProps> = ({
   onToast,
   systemEmail,
-  tatHours,
-  selectedServerId
+  tatHours
 }) => {
   const [activeTab, setActiveTab] = useState<'planner' | 'slaReminder'>('slaReminder');
   const [viewMode, setViewMode] = useState<'visual' | 'code'>('visual');
@@ -99,15 +97,14 @@ export const EmailTemplatesPreview: React.FC<EmailTemplatesPreviewProps> = ({
         recipientEmail: testRecipient,
         hodEmail: mockData.hodEmail,
         data: mockData,
-        html: activeHtml,
-        serverId: selectedServerId
+        html: activeHtml
       });
 
       if (res.success) {
         if (res.realEmailDelivered) {
-          onToast(`Live Email sent via SMTP to ${testRecipient}!`);
+          onToast(`Live Email dispatched via Resend API to ${testRecipient}!`);
         } else {
-          onToast(`Email dispatched to queue (${res.serverName || 'SMTP Relay'})`);
+          onToast(`Email dispatched to queue (${res.serverName || 'Resend HTTPS API'})`);
         }
       } else {
         onToast(`Dispatch warning: Delivery failed`);
@@ -154,7 +151,7 @@ export const EmailTemplatesPreview: React.FC<EmailTemplatesPreviewProps> = ({
       </div>
 
       <p style={{ fontSize: '12.5px', color: 'var(--muted)', marginBottom: '14px' }}>
-        Official HTML templates dispatched automatically via the configured SMTP relay when an audit is planned in Planner or when findings are dispatched with the 72-hour SLA response clock.
+        Official HTML templates dispatched automatically via the configured Resend HTTPS API when an audit is planned in Planner or when findings are dispatched with the 72-hour SLA response clock.
       </p>
 
       {/* TEMPLATE INFO & TEST DISPATCH BAR */}

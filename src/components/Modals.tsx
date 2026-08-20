@@ -3,7 +3,7 @@ import { PlanItem, AuditReport, Department, User, UserRole, ZoneName, Settings, 
 import { getZoneDeptContacts } from '../data/departmentsData';
 import { h6 } from '../data/usersData';
 import * as XLSX from 'xlsx';
-import { Plus, Edit2, X, Send, Paperclip, Check, AlertTriangle, FileText, Upload, Save, CheckCircle2, Star, ChevronDown, ChevronRight, MapPin } from 'lucide-react';
+import { Plus, Edit2, X, Send, Paperclip, Check, AlertTriangle, FileText, Upload, Save, CheckCircle2, Star, ChevronDown, ChevronRight, MapPin, Zap } from 'lucide-react';
 
 // ---------------------- PLAN MODAL ----------------------
 interface PlanModalProps {
@@ -163,7 +163,6 @@ interface DispatchModalProps {
     auditId: string;
     spocMail: string;
     hodMail: string;
-    smtpServerId?: string;
     includeAttachment?: boolean;
     attachments?: EmailAttachment[];
   }) => Promise<void>;
@@ -176,12 +175,6 @@ export const DispatchModal: React.FC<DispatchModalProps> = ({ auditId, audit, de
   const [dispatching, setDispatching] = useState(false);
   const [includeAttachment, setIncludeAttachment] = useState(true);
   const [extraFiles, setExtraFiles] = useState<EmailAttachment[]>([]);
-
-  const smtpServers = settings?.smtpServers || [];
-  const activeSmtpId = settings?.activeSmtpServerId || (smtpServers.find(s => s.isDefault)?.id || smtpServers[0]?.id || '');
-  const [selectedServerId, setSelectedServerId] = useState<string>(activeSmtpId);
-
-  const selectedServer = smtpServers.find(s => s.id === selectedServerId);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -216,7 +209,6 @@ export const DispatchModal: React.FC<DispatchModalProps> = ({ auditId, audit, de
         auditId,
         spocMail,
         hodMail,
-        smtpServerId: selectedServerId || undefined,
         includeAttachment,
         attachments: extraFiles
       });
@@ -242,33 +234,18 @@ export const DispatchModal: React.FC<DispatchModalProps> = ({ auditId, audit, de
         </div>
 
         <div className="alert ai" style={{ marginBottom: '14px', fontSize: '12px' }}>
-          This will generate a 72-hour SLA task for <strong>{audit.dept}</strong> and deliver an email notification with one-click SPOC authorization and attached findings report.
+          This will generate a 72-hour SLA task for <strong>{audit.dept}</strong> and deliver an email notification via Resend HTTPS API with one-click SPOC authorization and attached findings report.
         </div>
 
-        {/* OUTGOING SMTP SERVER SELECTOR */}
-        {smtpServers.length > 0 && (
-          <div style={{ background: 'var(--surface2)', padding: '10px 14px', borderRadius: '6px', marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 600 }}>Outgoing Mail Server:</span>
-              <select
-                value={selectedServerId}
-                onChange={e => setSelectedServerId(e.target.value)}
-                style={{ padding: '4px 8px', fontSize: '12px', borderRadius: '4px', border: '1px solid var(--border)', background: '#fff' }}
-              >
-                {smtpServers.map(s => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.user || 'No Email'}) {s.isDefault ? '(Default)' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {selectedServer?.pass ? (
-              <span className="badge bg" style={{ fontSize: '10px' }}>Live SMTP</span>
-            ) : (
-              <span className="badge by" style={{ fontSize: '10px' }}>Local Queue</span>
-            )}
+        {/* RESEND DELIVERY CHANNEL BADGE */}
+        <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '10px 14px', borderRadius: '6px', marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Zap size={14} style={{ color: '#16a34a' }} />
+            <span style={{ fontSize: '12px', fontWeight: 600, color: '#166534' }}>Resend HTTPS Email Delivery</span>
+            <span style={{ fontSize: '12px', color: '#64748b' }}>({settings?.senderEmail || 'onboarding@resend.dev'})</span>
           </div>
-        )}
+          <span className="badge bg" style={{ fontSize: '10px' }}>Direct REST API</span>
+        </div>
 
         <div className="field" style={{ marginBottom: '12px' }}>
           <label>Department / Function</label>
